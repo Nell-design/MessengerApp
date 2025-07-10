@@ -165,3 +165,21 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Force logout button style everywhere */
+.logout-btn {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 0.5rem !important;
+  background-color: #fef2f2 !important; /* bg-red-50 */
+  color: #dc2626 !important; /* text-red-600 */
+  font-weight: 600 !important;
+  transition: background 0.2s !important;
+}
+.logout-btn:hover {
+  background-color: #fee2e2 !important; /* hover:bg-red-100 */
+}
