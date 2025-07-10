@@ -22,12 +22,12 @@ class UsersTableSeeder extends Seeder
         ]);
  
         // Création d'un utilisateur de test
-        User::create([
+       /*  User::create([
             'name' => 'Test User',
-            'email' => 'test@example.com',
+            'email' => 'test@test1.com',
             'password' => Hash::make('password'),
             'avatar' => 'https://i.pravatar.cc/300?u=test',
             'last_connexion' => now()
-        ]);
+        ]); */
     }
 }

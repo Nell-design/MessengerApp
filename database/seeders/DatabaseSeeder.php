@@ -18,11 +18,12 @@ class DatabaseSeeder extends Seeder
             UsersTableSeeder::class,
             ConversationsTableSeeder::class,
             MessagesTableSeeder::class,
+            
         ]);
 
-        User::factory()->create([
+        /* User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-        ]);
+        ]); */
     }
 }

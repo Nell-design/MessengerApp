@@ -17,9 +17,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->rememberToken();
-            $table->timestamp('last_connexion')->nullable();
             $table->string('avatar')->nullable();
+            $table->timestamp('last_connexion')->nullable();
+            $table->boolean('is_online')->default(false);
+            $table->rememberToken();
             $table->timestamps();
         });
 
@@ -38,6 +39,15 @@ return new class extends Migration
             $table->integer('last_activity')->index();
         });
 
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users');
+            $table->string('type');
+            $table->json('data');
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
+        });
+
     }
 
     /**
@@ -48,5 +58,6 @@ return new class extends Migration
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
-    }
+        Schema::dropIfExists('notifications');
+        }
 };
