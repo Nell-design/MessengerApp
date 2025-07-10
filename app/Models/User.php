@@ -46,6 +46,18 @@ class User extends Authenticatable
             });
     }
 
+    // Ajoutez dans app/Models/User.php
+    public function lastMessageWithAuthUser()
+    {
+        return $this->hasOne(Message::class, 'sender_id')
+            ->where('receiver_id', auth()->id())
+            ->orWhere(function($q) {
+                $q->where('sender_id', auth()->id())
+                  ->where('receiver_id', $this->id);
+            })
+            ->latest();
+    }
+
     // Méthodes utilitaires
     public function getConversationWith($userId)
     {
