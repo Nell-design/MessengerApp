@@ -21,6 +21,12 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'last_connexion',
+        'avatar',
+    ];
+
+    protected $casts = [
+        'last_connexion' => 'datetime'
     ];
 
     /**
@@ -32,6 +38,22 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class, 'first_id')
+            ->orWhere('second_id', $this->id);
+    }
+ 
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+ 
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
+    }
 
     /**
      * Get the attributes that should be cast.
