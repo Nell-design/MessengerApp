@@ -12,19 +12,19 @@ use Illuminate\Queue\SerializesModels;
 
 namespace App\Events;
 
-class MessageDeletedForEveryoneEvent extends MessageDeletedEvent
+class MessageNotificationEvent implements ShouldBroadcastNow
 {
-    public function broadcastWith()
+    public $userId;
+    public $notification;
+
+    public function __construct($userId, $notificationData)
     {
-        return [
-            'action' => 'delete_for_everyone',
-            'message_id' => $this->messageId,
-            'conversation_id' => $this->conversationId
-        ];
+        $this->userId = $userId;
+        $this->notification = $notificationData;
     }
 
-    public function broadcastAs()
+    public function broadcastOn()
     {
-        return 'message.deleted_for_everyone';
+        return new Channel('user.'.$this->userId);
     }
 }

@@ -11,21 +11,22 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-class MessageDeletedEvent implements ShouldBroadcastNow
-{
-    public $conversationId;
-    public $messageId;
-    public $deletedBy;
+namespace App\Events;
 
-    public function __construct($conversationId, $messageId, $userId)
+class NewConversationEvent implements ShouldBroadcastNow
+{
+    public $conversation;
+
+    public function __construct($conversation)
     {
-        $this->conversationId = $conversationId;
-        $this->messageId = $messageId;
-        $this->deletedBy = $userId;
+        $this->conversation = $conversation;
     }
 
     public function broadcastOn()
     {
-        return new Channel('conversation.'.$this->conversationId);
+        return [
+            new Channel('user.'.$this->conversation->first_id),
+            new Channel('user.'.$this->conversation->second_id)
+        ];
     }
 }

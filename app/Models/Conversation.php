@@ -6,8 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Conversation extends Model
 {
-    protected $fillable = ['first_id', 'second_id'];
+    protected $fillable = [
+        'first_id',
+        'second_id'
+    ];
 
+    // Relations
     public function firstUser()
     {
         return $this->belongsTo(User::class, 'first_id');
@@ -23,10 +27,28 @@ class Conversation extends Model
         return $this->hasMany(Message::class);
     }
 
+    // Scopes
+    public function scopeBetweenUsers($query, $firstId, $secondId)
+    {
+        return $query->where(function($q) use ($firstId, $secondId) {
+            $q->where('first_id', $firstId)
+              ->where('second_id', $secondId);
+        })->orWhere(function($q) use ($firstId, $secondId) {
+            $q->where('first_id', $secondId)
+              ->where('second_id', $firstId);
+        });
+    }
+
+    // Accessors
     public function getOtherUserAttribute()
     {
         return auth()->id() === $this->first_id
             ? $this->secondUser
             : $this->firstUser;
+    }
+
+    public function getLastMessageAttribute()
+    {
+        return $this->messages()->latest()->first();
     }
 }

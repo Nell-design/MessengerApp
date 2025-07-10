@@ -16,7 +16,7 @@ class MessageSentEvent implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        return new Channel('conversation.' . $this->message->conversation_id);
+        return new Channel('conversation.'.$this->message->conversation_id);
     }
 
     public function broadcastAs()
