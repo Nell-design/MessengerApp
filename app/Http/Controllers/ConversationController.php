@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\NewConversationEvent;
 use App\Http\Requests\CreateConversationRequest;
+use App\Models\Conversation;
 use App\Services\ConversationService;
 
 class ConversationController extends Controller
@@ -25,5 +27,23 @@ class ConversationController extends Controller
         );
 
         return response()->json($conversation, 201);
+    }
+
+    public function show(Conversation $conversation)
+    {
+        $this->authorize('view', $conversation);
+
+        $messages = $conversation->messages()
+            ->visibleToUser(auth()->id())
+            ->with('sender')
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->groupBy(fn($msg) => $msg->created_at->format('Y-m-d'));
+
+        return response()->json([
+            'conversation' => $conversation,
+            'messages' => $messages,
+            'other_user' => $conversation->otherUser
+        ]);
     }
 }
