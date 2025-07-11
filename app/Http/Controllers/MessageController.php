@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
     public function __construct(
         private MessageService $messageService
     ) {}

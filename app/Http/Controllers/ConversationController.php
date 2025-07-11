@@ -9,6 +9,8 @@ use App\Services\ConversationService;
 
 class ConversationController extends Controller
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
     public function __construct(
         private ConversationService $conversationService
     ) {}

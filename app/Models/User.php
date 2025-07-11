@@ -41,7 +41,7 @@ class User extends Authenticatable
     public function conversations()
     {
         return $this->hasMany(Conversation::class, 'first_id')
-            ->orWhere(function($query) {
+            ->orWhere(function ($query) {
                 $query->where('second_id', $this->id);
             });
     }
@@ -51,9 +51,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(Message::class, 'sender_id')
             ->where('receiver_id', auth()->id())
-            ->orWhere(function($q) {
+            ->orWhere(function ($q) {
                 $q->where('sender_id', auth()->id())
-                  ->where('receiver_id', $this->id);
+                    ->where('receiver_id', $this->id);
             })
             ->latest();
     }
@@ -61,12 +61,12 @@ class User extends Authenticatable
     // Méthodes utilitaires
     public function getConversationWith($userId)
     {
-        return Conversation::where(function($query) use ($userId) {
+        return Conversation::where(function ($query) use ($userId) {
             $query->where('first_id', $this->id)
-                  ->where('second_id', $userId);
-        })->orWhere(function($query) use ($userId) {
+                ->where('second_id', $userId);
+        })->orWhere(function ($query) use ($userId) {
             $query->where('first_id', $userId)
-                  ->where('second_id', $this->id);
+                ->where('second_id', $this->id);
         })->first();
     }
 }

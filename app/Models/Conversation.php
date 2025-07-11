@@ -42,8 +42,8 @@ class Conversation extends Model
     // Accessors
     public function getOtherUserAttribute()
     {
-        return auth()->id() === $this->first_id 
-            ? $this->secondUser 
+        return auth()->id() === $this->first_id
+            ? $this->secondUser
             : $this->firstUser;
     }
 
