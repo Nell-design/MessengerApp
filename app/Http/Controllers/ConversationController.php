@@ -6,6 +6,7 @@ use App\Events\NewConversationEvent;
 use App\Http\Requests\CreateConversationRequest;
 use App\Models\Conversation;
 use App\Services\ConversationService;
+use Inertia\Inertia;
 
 class ConversationController extends Controller
 {
@@ -15,11 +16,26 @@ class ConversationController extends Controller
         private ConversationService $conversationService
     ) {}
 
+
     public function index()
-    {
-        $conversations = $this->conversationService->getUserConversations(auth()->id());
-        return response()->json($conversations);
-    }
+{
+    $conversations = $this->conversationService->getUserConversations(auth()->id());
+
+    // Formate les données à envoyer à Vue
+    $formatted = collect($conversations)->map(function ($conv) {
+        return [
+            'id' => $conv->id,
+            'name' => $conv->other_user->name,
+            'message' => optional($conv->last_message)->contenu ?? '',
+            'time' => optional($conv->last_message)->created_at?->format('H:i') ?? '',
+        ];
+    });
+
+    return Inertia::render('Messagerie/Index', [
+        'conversations' => $formatted,
+    ]);
+}
+    
 
     public function store(CreateConversationRequest $request)
     {
