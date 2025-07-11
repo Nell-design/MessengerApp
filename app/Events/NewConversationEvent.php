@@ -25,11 +25,13 @@ class NewConversationEvent implements ShouldBroadcastNow
     public function broadcastWith()
     {
         return [
+
             'conversation' => [
                 'id' => $this->conversation->id,
                 'users' => [
                     $this->conversation->firstUser,
                     $this->conversation->secondUser
+
                 ]
             ]
         ];

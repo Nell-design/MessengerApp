@@ -25,6 +25,6 @@ class MessageDeletedForEveryoneEvent extends MessageDeletedEvent
 
     public function broadcastAs()
     {
-        return 'message.deleted_for_everyone';
+        return 'MessageDeletedForEveryoneEvent';
     }
 }

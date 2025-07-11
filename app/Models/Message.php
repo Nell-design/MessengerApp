@@ -7,20 +7,28 @@ use Illuminate\Database\Eloquent\Model;
 class Message extends Model
 {
     protected $fillable = [
-        'content',
-        'conversation_id',
-        'sender_id',
-        'receiver_id',
-        'is_read',
-        'deleted_for_sender',
-        'deleted_for_receiver'
-    ];
+    'content',
+    'conversation_id',
+    'sender_id',
+    'receiver_id',
+    'is_read',
+    'deleted_for_sender',
+    'deleted_for_receiver'
+];
 
-    protected $casts = [
-        'is_read' => 'boolean',
-        'deleted_for_sender' => 'boolean',
-        'deleted_for_receiver' => 'boolean'
-    ];
+protected $casts = [
+    'is_read' => 'boolean',
+    'deleted_for_sender' => 'boolean',
+    'deleted_for_receiver' => 'boolean'
+];
+
+    /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName()
+    {
+        return 'id';
+    }
 
     // Relations
     public function conversation()
@@ -62,6 +70,14 @@ class Message extends Model
             $this->update(['is_read' => true]);
         }
     }
+
+    // app/Models/Message.php
+
+public function user()
+{
+    return $this->belongsTo(User::class, 'sender_id');
+}
+    
 
     public function deleteForUser($userId)
     {
