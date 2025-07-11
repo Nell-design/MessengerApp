@@ -8,14 +8,26 @@ use App\Models\User;
 
 class UserController extends Controller
 {
+
+public function listAll()
+{
+    if (!auth()->check()) {
+        \Log::error('Tentative d\'accès non authentifiée à /users/all');
+        return response()->json(['error' => 'Non authentifié'], 401);
+    }
+
+    $users = User::where('id', '!=', auth()->id())
+        ->get(['id', 'name', 'avatar']);
+
+    \Log::info('Utilisateurs récupérés :', $users->toArray());
+
+    return response()->json($users);
+}
+
+
     public function updateStatus(Request $request)
     {
-        $request->validate([
-            'is_online' => 'required|boolean'
-        ]);
-
         auth()->user()->update([
-            'is_online' => $request->is_online,
             'last_connexion' => now()
         ]);
 
@@ -33,7 +45,7 @@ class UserController extends Controller
         $users = User::where('name', 'like', '%'.$request->query.'%')
             ->where('id', '!=', auth()->id())
             ->limit(10)
-            ->get(['id', 'name', 'avatar', 'is_online']);
+            ->get(['id', 'name', 'avatar']);
 
         return response()->json($users);
     }

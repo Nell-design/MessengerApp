@@ -2,16 +2,16 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-
 class UserTypingEvent implements ShouldBroadcastNow
 {
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
     public $conversationId;
     public $userId;
     public $isTyping;
@@ -25,14 +25,26 @@ class UserTypingEvent implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
+        \Log::info('⌨️ UserTypingEvent: Broadcast sur le canal public', [
+            'conversation_id' => $this->conversationId,
+            'user_id' => $this->userId,
+            'is_typing' => $this->isTyping,
+            'channel' => 'conversation.'.$this->conversationId
+        ]);
+        
         return new Channel('conversation.'.$this->conversationId);
+    }
+
+    public function broadcastAs()
+    {
+        return 'UserTypingEvent';
     }
 
     public function broadcastWith()
     {
         return [
             'user_id' => $this->userId,
-            'typing' => $this->isTyping
+            'is_typing' => $this->isTyping
         ];
     }
 }

@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Message;
+use App\Policies\MessagePolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Enregistrer la Policy pour le modèle Message
+        Gate::policy(Message::class, MessagePolicy::class);
     }
 }

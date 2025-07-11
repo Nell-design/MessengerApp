@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\NewConversationEvent;
-use App\Http\Requests\CreateConversationRequest;
+use Inertia\Inertia;
 use App\Models\Conversation;
+use Illuminate\Http\Request;
 use App\Services\ConversationService;
+use App\Http\Requests\CreateConversationRequest;
 
 class ConversationController extends Controller
 {
@@ -21,6 +22,42 @@ class ConversationController extends Controller
         return response()->json($conversations);
     }
 
+    public function start(Request $request)
+{
+    try {
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        // Log temporaire pour debugger
+        \Log::info('Création conversation avec', ['from' => auth()->id(), 'to' => $request->user_id]);
+
+        // Exemple simple de logique (à adapter selon ton modèle)
+        $conversation = Conversation::firstOrCreate([
+            'first_id' => min(auth()->id(), $request->user_id),
+            'second_id' => max(auth()->id(), $request->user_id),
+        ]);
+
+        return response()->json([
+            'id' => $conversation->id,
+            'name' => $conversation->otherUser->name,
+            'avatar' => $conversation->otherUser->avatar,
+            'message' => '',
+            'time' => now()->format('H:i'),
+        ]);
+
+    } catch (\Throwable $e) {
+        \Log::error('Erreur création conversation : ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'error' => 'Erreur serveur : ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+
     public function store(CreateConversationRequest $request)
     {
         $conversation = $this->conversationService->createConversation(
@@ -31,21 +68,23 @@ class ConversationController extends Controller
         return response()->json($conversation, 201);
     }
 
-    public function show(Conversation $conversation)
-    {
-        $this->authorize('view', $conversation);
+   public function show(Conversation $conversation)
+{
+    $authId = auth()->id();
 
-        $messages = $conversation->messages()
-            ->visibleToUser(auth()->id())
-            ->with('sender')
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->groupBy(fn($msg) => $msg->created_at->format('Y-m-d'));
-
-        return response()->json([
-            'conversation' => $conversation,
-            'messages' => $messages,
-            'other_user' => $conversation->otherUser
-        ]);
+    // Sécurité : ne pas autoriser un utilisateur non concerné
+    if ($authId !== $conversation->first_id && $authId !== $conversation->second_id) {
+        abort(403);
     }
+
+    return Inertia::render('ChatWindow', [
+        'conversation' => [
+            'id' => $conversation->id,
+            'name' => $conversation->otherUser->name,
+            'avatar' => $conversation->otherUser->avatar,
+        ],
+        'currentUserId' => $authId,
+    ]);
+}
+
 }
