@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { defineEmits, onMounted, onUnmounted, ref } from 'vue';
+import { defineEmits, onMounted, onUnmounted, ref, computed } from 'vue';
 
 function logout() {
     router.post(
@@ -61,6 +61,20 @@ onUnmounted(() => {
     window.removeEventListener('resize', handleResize);
 });
 
+// Variable réactive pour stocker le texte de recherche
+const search = ref('');
+
+// Computed property pour filtrer les conversations selon le texte de recherche
+const filteredConversations = computed(() => {
+    // Si la barre de recherche est vide, on retourne toutes les conversations
+    if (!search.value.trim()) return conversations;
+    // Sinon, on filtre selon le nom ou le message (insensible à la casse)
+    return conversations.filter(conv =>
+        conv.name.toLowerCase().includes(search.value.toLowerCase()) ||
+        conv.message.toLowerCase().includes(search.value.toLowerCase())
+    );
+});
+
 const emit = defineEmits(['select-conversation']);
 </script>
 
@@ -82,12 +96,19 @@ const emit = defineEmits(['select-conversation']);
             </button>
         </div>
         <div class="px-4 py-2">
-            <input type="text" placeholder="Rechercher..." class="w-full rounded bg-gray-100 px-3 py-2 focus:outline-none" />
+            <!-- Barre de recherche liée à la variable search -->
+            <input
+                type="text"
+                placeholder="Rechercher..."
+                class="w-full rounded bg-gray-100 px-3 py-2 focus:outline-none"
+                v-model="search"
+            />
         </div>
         <div class="w-full flex-1 overflow-y-auto bg-white">
             <ul>
+                <!-- On utilise filteredConversations au lieu de conversations -->
                 <li
-                    v-for="conv in conversations"
+                    v-for="conv in filteredConversations"
                     :key="conv.id"
                     :class="[
                         'flex cursor-pointer items-center px-4 py-3 hover:bg-gray-100',
@@ -118,7 +139,7 @@ const emit = defineEmits(['select-conversation']);
         >
             <button
                 @click="logout"
-                class="logout-btn flex w-full items-center justify-center md:relative md:top-70 gap-2 rounded bg-red-70 px-4 py-2 font-semibold text-red-600 transition hover:bg-red-100"
+                class="logout-btn flex w-full items-center justify-center md:relative md:top-110 gap-2 rounded bg-red-70 px-4 py-2 font-semibold text-red-600 transition hover:bg-red-100"
             >
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path
