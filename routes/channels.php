@@ -13,3 +13,7 @@ Broadcast::channel('conversation.{conversationId}', function ($user, $conversati
 Broadcast::channel('user.{userId}', function ($authUser, $userId) {
     return (int)$authUser->id === (int)$userId;
 });
+
+Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
