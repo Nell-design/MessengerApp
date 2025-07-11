@@ -3,12 +3,6 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
 class MessageDeletedEvent implements ShouldBroadcastNow
@@ -27,5 +21,10 @@ class MessageDeletedEvent implements ShouldBroadcastNow
     public function broadcastOn()
     {
         return new Channel('conversation.'.$this->conversationId);
+    }
+
+    public function broadcastAs()
+    {
+        return 'message.deleted';
     }
 }
