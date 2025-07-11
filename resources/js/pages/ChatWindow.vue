@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { defineProps } from 'vue';
+import { defineProps, ref } from 'vue'; // On importe ref pour la réactivité
+import EmojiPicker from 'vue3-emoji-picker'
+import 'vue3-emoji-picker/css'
 
 const props = defineProps({
     onOpenSidebar: {
@@ -8,7 +10,8 @@ const props = defineProps({
     },
 });
 
-const messages = [
+// On rend le tableau messages réactif pour pouvoir le modifier dynamiquement
+const messages = ref([
     {
         id: 1,
         fromMe: false,
@@ -37,7 +40,31 @@ const messages = [
         time: "12:35",
         avatar: false,
     },
-];
+]);
+
+// Variable réactive pour le texte du champ de saisie
+const newMessage = ref('');
+
+// Variable pour afficher ou cacher le sélecteur d'emoji
+const showEmojiPicker = ref(false);
+
+function onEmojiSelect(emoji) {
+  // emoji.i contient l'emoji sélectionné
+  newMessage.value += emoji.i
+  showEmojiPicker.value = false
+}
+
+function sendMessage() {
+    if (!newMessage.value.trim()) return;
+    messages.value.push({
+        id: Date.now(),
+        fromMe: true,
+        text: newMessage.value,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        avatar: false,
+    });
+    newMessage.value = '';
+}
 </script>
 
 <template>
@@ -78,11 +105,25 @@ const messages = [
             </div>
         </div>
         <div class="p-4 border-t flex items-center gap-2">
-            <button class="text-gray-400 hover:text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"><path fill="currentColor" d="M14.36 14.23a3.76 3.76 0 0 1-4.72 0a1 1 0 0 0-1.28 1.54a5.68 5.68 0 0 0 7.28 0a1 1 0 1 0-1.28-1.54M9 11a1 1 0 1 0-1-1a1 1 0 0 0 1 1m6-2a1 1 0 1 0 1 1a1 1 0 0 0-1-1m-3-7a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 18a8 8 0 1 1 8-8a8 8 0 0 1-8 8"/></svg>
-            </button>
-            <input type="text" placeholder="Écrire un message..." class="flex-1 px-4 py-2 rounded-full border bg-gray-100 focus:outline-none" />
-            <button class="bg-violet-600 text-white p-2 rounded-full hover:bg-violet-700">
+            <!-- Bouton pour afficher/cacher le picker -->
+            <div class="relative">
+                <button class="text-gray-400 hover:text-gray-600" @click="showEmojiPicker = !showEmojiPicker">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"><path fill="currentColor" d="M14.36 14.23a3.76 3.76 0 0 1-4.72 0a1 1 0 0 0-1.28 1.54a5.68 5.68 0 0 0 7.28 0a1 1 0 1 0-1.28-1.54M9 11a1 1 0 1 0-1-1a1 1 0 0 0 1 1m6-2a1 1 0 1 0 1 1a1 1 0 0 0-1-1m-3-7a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 18a8 8 0 1 1 8-8a8 8 0 0 1-8 8"/></svg>
+                </button>
+                <div v-if="showEmojiPicker" class="absolute bottom-12 left-0 z-10">
+                    <EmojiPicker @select="onEmojiSelect" />
+                </div>
+            </div>
+            <!-- Champ de saisie lié à newMessage -->
+            <input
+                type="text"
+                placeholder="Écrire un message..."
+                class="flex-1 px-4 py-2 rounded-full border bg-gray-100 focus:outline-none"
+                v-model="newMessage"
+                @keyup.enter="sendMessage"
+            />
+            <!-- Bouton d'envoi -->
+            <button class="bg-violet-600 text-white p-2 rounded-full hover:bg-violet-700" @click="sendMessage">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
             </button>
         </div>
