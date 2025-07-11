@@ -1,27 +1,15 @@
-<?php 
-
+<?php
 
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
-class MessageReceivedEvent extends MessageSentEvent
+class MessageReceivedEvent extends MessageSentEvent implements ShouldBroadcastNow
 {
-    /**
-     * Le nom de l'événement.
-     *
-     * @var string
-     */
-    public $name = 'message.received';
-
-    public function __construct($message)
-    {
-        parent::__construct($message);
-    }
-
     public function broadcastOn()
     {
-        return new Channel('user.'.$this->message->receiver_id);
+        return new PrivateChannel('user.'.$this->message->receiver_id);
     }
 
     public function broadcastAs()

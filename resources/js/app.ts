@@ -7,8 +7,8 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
 import { configureEcho } from '@laravel/echo-vue';
-import './echo.js';
 
+import './echo.js';
 configureEcho({
     broadcaster: 'reverb',
 });
@@ -29,5 +29,4 @@ createInertiaApp({
     },
 });
 
-// This will set light / dark mode on page load...
 initializeTheme();

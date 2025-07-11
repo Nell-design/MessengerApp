@@ -3,15 +3,7 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
-
-namespace App\Events;
 
 class ConversationListUpdatedEvent implements ShouldBroadcastNow
 {
@@ -26,6 +18,11 @@ class ConversationListUpdatedEvent implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        return new Channel('user.'.$this->userId);
+        return new PrivateChannel('user.'.$this->userId); // Changé en PrivateChannel
+    }
+
+    public function broadcastAs()
+    {
+        return 'conversation.updated';
     }
 }

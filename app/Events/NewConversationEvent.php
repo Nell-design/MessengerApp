@@ -3,15 +3,7 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
-
-namespace App\Events;
 
 class NewConversationEvent implements ShouldBroadcastNow
 {
@@ -19,14 +11,27 @@ class NewConversationEvent implements ShouldBroadcastNow
 
     public function __construct($conversation)
     {
-        $this->conversation = $conversation;
+        $this->conversation = $conversation->load(['firstUser', 'secondUser']);
     }
 
     public function broadcastOn()
     {
         return [
-            new Channel('user.'.$this->conversation->first_id),
-            new Channel('user.'.$this->conversation->second_id)
+            new PrivateChannel('user.'.$this->conversation->first_id),
+            new PrivateChannel('user.'.$this->conversation->second_id)
+        ];
+    }
+
+    public function broadcastWith()
+    {
+        return [
+            'conversation' => [
+                'id' => $this->conversation->id,
+                'users' => [
+                    $this->conversation->firstUser,
+                    $this->conversation->secondUser
+                ]
+            ]
         ];
     }
 }
