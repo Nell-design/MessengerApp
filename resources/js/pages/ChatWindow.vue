@@ -130,10 +130,14 @@ watch(typingUserId, async (newId) => {
 
 watch(
   () => props.conversation?.id,
-  (newId) => {
+  async (newId) => {
     if (newId) {
-      fetchMessages(newId);
+      await fetchMessages(newId);
       markConversationAsRead(newId);
+      await nextTick();
+      if (chatContainer.value) {
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+      }
     }
     // Réinitialise l'état de frappe distant lors du changement de conversation
     remoteTyping.value = false;
