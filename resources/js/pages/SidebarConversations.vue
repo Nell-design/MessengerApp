@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { defineEmits, onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue';
+import { defineEmits, onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import NotificationManager from '../components/NotificationManager.vue';
 import { usePage } from '@inertiajs/vue3';
 import { getInitials } from '../composables/useInitials';
@@ -16,11 +16,7 @@ console.log('🔍 SidebarConversations: ID utilisateur connecté:', userId);
 
 // Déconnexion
 function logout() {
-    router.post(route('logout'), {}, {
-        onFinish: () => {
-            window.location.href = '/';
-        },
-    });
+    router.post(route('logout'));
 }
 
 // Types
@@ -248,7 +244,7 @@ function updateLastMessage(conversationId: number, message: any) {
 
 onMounted(() => {
     console.log("🔍 SidebarConversations: onMounted - ID utilisateur connecté:", props.currentUserId);
-    
+
     fetchUsers();
     fetchConversations();
     window.addEventListener('resize', handleResize);
@@ -256,23 +252,23 @@ onMounted(() => {
 
     // Écouter les mises à jour de conversations en temps réel
     setupConversationListeners();
-    
+
     // Écouter sur le canal général des conversations
     (window as any).Echo.channel(`conversation`)
         .listen('MessageSentEvent', (event: any) => {
             if (props.currentUserId === event.receiver_id) {
                 console.log("📨 Message reçu pour l'utilisateur actuel sur canal conversation");
-                
+
                 // Récupérer la conversation et mettre à jour le dernier message
                 if (event.message && event.conversation_id) {
                     const conversationId = event.conversation_id;
                     const message = event.message;
-                    
+
                     console.log('📨 Mise à jour de la conversation:', conversationId, 'avec le message:', message);
-                    
+
                     // Trouver la conversation dans la liste
                     const index = conversations.value.findIndex(c => c.id === conversationId);
-                    
+
                     if (index !== -1) {
                         // Mettre à jour le dernier message
                         conversations.value[index].last_message = {
@@ -282,28 +278,28 @@ onMounted(() => {
                             created_at: message.created_at,
                             is_read: false,
                         };
-                        
+
                         // Mettre à jour l'heure du dernier message
                         conversations.value[index].time = new Date(message.created_at).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit'
                         });
-                        
+
                         // Mettre à jour le message legacy pour compatibilité
                         conversations.value[index].message = message.content;
-                        
+
                         // Incrémenter le compteur de messages non lus si le message n'est pas de l'utilisateur actuel
                         if (message.sender_id !== props.currentUserId) {
                             conversations.value[index].unread_count = (conversations.value[index].unread_count || 0) + 1;
                         }
-                        
+
                         // Déplacer la conversation en haut de la liste
                         if (index > 0) {
                             const conversation = conversations.value.splice(index, 1)[0];
                             conversations.value.unshift(conversation);
                             console.log('📈 Conversation déplacée en haut après nouveau message:', conversationId);
                         }
-                        
+
                         console.log('✅ Conversation mise à jour avec nouveau message:', conversationId);
                     } else {
                         // Si la conversation n'existe pas dans la liste, la récupérer depuis le serveur

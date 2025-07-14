@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Echo from 'laravel-echo';
-import { defineProps, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { defineProps, ref, watch, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import { getInitials } from '../composables/useInitials';
 import EmojiPicker from 'vue3-emoji-picker';
 import 'vue3-emoji-picker/css';
@@ -562,188 +562,225 @@ function handleScroll() {
 
 // Récupère le nom de l'utilisateur qui tape dès que typingUserId change
 
+// Détection du mode mobile (largeur < 640px)
+const isMobile = ref(window.innerWidth < 640);
+function handleResize() {
+  isMobile.value = window.innerWidth < 640;
+}
+onMounted(() => window.addEventListener('resize', handleResize));
+onUnmounted(() => window.removeEventListener('resize', handleResize));
+
+// Fonction pour revenir à la liste des conversations (mobile)
+function goBack() {
+  // Si la prop onOpenSidebar est fournie, on l'appelle
+  if (props.onOpenSidebar) {
+    props.onOpenSidebar();
+  }
+}
 
 </script>
 
 <template>
-  <div v-if="conversation" class="flex-1 flex flex-col bg-white rounded-r-xl shadow h-full">
-    <!-- Header -->
-    <div class="flex items-center justify-between px-6 py-4 border-b">
-      <div class="flex items-center gap-3">
-        <button
-          v-if="onOpenSidebar"
-          class="sm:hidden mr-2 bg-transparent text-white p-2 rounded"
-          @click="onOpenSidebar()"
-          type="button"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="24" viewBox="0 0 12 24">
-            <path
-              fill="#0d0c0c"
-              fill-rule="evenodd"
-              d="m3.343 12l7.071 7.071L9 20.485l-7.778-7.778a1 1 0 0 1 0-1.414L9 3.515l1.414 1.414z"
-            />
-          </svg>
-        </button>
-        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover" v-if="!conversation.avatar">
-          {{ getInitials(conversation.name) }}
-        </div>
-        <img v-else :src="conversation.avatar" class="w-10 h-10 rounded-full object-cover" />
-        <div>
-          <div class="font-semibold">{{ conversation.name }}</div>
-          <div class="text-xs text-gray-400">
-            <span v-if="remoteTyping && typingUserName">{{ typingUserName }} est en train d'écrire...</span>
-            <span v-else>En ligne</span>
+  <div class="relative w-full h-full flex flex-col">
+    <!-- Bouton retour visible uniquement sur mobile -->
+    <button
+      v-if="isMobile"
+      @click="goBack"
+      class="absolute top-2 left-2 z-10 flex items-center p-2 rounded-full bg-white  md:hidden"
+      aria-label="Retour"
+      type="button"
+    >
+      <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
+    <div v-if="conversation" class="flex-1 flex flex-col bg-white rounded-r-xl shadow h-full">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <div class="flex items-center gap-3">
+          <button
+            v-if="onOpenSidebar"
+            class="sm:hidden mr-2 bg-transparent text-white p-2 rounded"
+            @click="onOpenSidebar()"
+            type="button"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="24" viewBox="0 0 12 24">
+              <path
+                fill="#0d0c0c"
+                fill-rule="evenodd"
+                d="m3.343 12l7.071 7.071L9 20.485l-7.778-7.778a1 1 0 0 1 0-1.414L9 3.515l1.414 1.414z"
+              />
+            </svg>
+          </button>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover" v-if="!conversation.avatar">
+            {{ getInitials(conversation.name) }}
           </div>
-        </div>
-      </div>
-      <div class="flex gap-3 text-gray-400">
-        <!-- Icônes -->
-        <button type="button" tabindex="-1">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="m16.556 12.906l-.455.453s-1.083 1.076-4.038-1.862s-1.872-4.014-1.872-4.014l.286-.286c.707-.702.774-1.83.157-2.654L9.374 2.86C8.61 1.84 7.135 1.705 6.26 2.575l-1.57 1.56c-.433.432-.723.99-.688 1.61c.09 1.587.808 5 4.812 8.982c4.247 4.222 8.232 4.39 9.861 4.238c.516-.048.964-.31 1.325-.67l1.42-1.412c.96-.953.69-2.588-.538-3.255l-1.91-1.039c-.806-.437-1.787-.309-2.417.317"
-            />
-          </svg>
-        </button>
-        <button type="button" tabindex="-1">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M5 5.5a2.75 2.75 0 0 0-2.75 2.75v7.5A2.75 2.75 0 0 0 5 18.5h8.5a2.75 2.75 0 0 0 2.75-2.75v-1.594l3.419 3.045c.805.717 2.081.145 2.081-.934V7.365c0-1.08-1.276-1.651-2.081-.934L16.25 9.476V8.25A2.75 2.75 0 0 0 13.5 5.5z"
-            />
-          </svg>
-        </button>
-        <button type="button" tabindex="-1">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M9 15.25a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.249 1.249 0 1 1 2.5 0a1.25 1.25 0 1 1-2.5 0"
-            />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Zone des messages -->
-    <div ref="chatContainer" class="flex-1 px-8 py-6 overflow-y-auto flex flex-col gap-2">
-      <div class="flex flex-col items-center">
-        <span class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full mb-2">Aujourd'hui</span>
-      </div>
-
-      <div v-if="loadingMessages" class="text-center text-sm text-gray-400">Chargement des messages...</div>
-
-      <div
-        v-for="msg in messages"
-        :key="msg.id"
-        class="flex items-end gap-2"
-        :class="msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'"
-      >
-        <!-- Avatar à gauche pour les messages reçus -->
-        <template v-if="msg.sender_id !== currentUserId">
-          <div v-if="!msg.sender_avatar" class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
-            {{ getInitials(props.conversation.name || 'Utilisateur') }}
-          </div>
-          <img v-else :src="msg.sender_avatar" class="w-8 h-8 rounded-full object-cover mb-1" />
-        </template>
-        <!-- Bulle de message -->
-        <div
-          :class="[
-            'max-w-xs px-4 py-2 rounded-2xl mb-1 shadow transition-colors relative group',
-            msg.sender_id === currentUserId
-              ? 'bg-violet-600 text-white rounded-br-none hover:bg-violet-700'
-              : 'bg-gray-100 text-gray-800 rounded-bl-none border hover:bg-gray-200'
-          ]"
-        >
-          <div>{{ msg.content }}</div>
-          <div class="text-xs text-gray-400 mt-1 text-right">
-            {{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
-            <span v-if="msg.sender_id === currentUserId && msg.read_at" class="ml-1 text-violet-500" title="Lu">
-              ✓
-            </span>
-          </div>
-
-          <!-- Menu de suppression pour l'expéditeur -->
-          <div v-if="msg.sender_id === currentUserId" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button
-              @click.stop="toggleDeleteMenu(msg.id)"
-              class="text-xs bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800 rounded-full p-1.5 shadow-sm border border-gray-200"
-              title="Options"
-              data-delete-button
-            >
-              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-              </svg>
-            </button>
-
-            <!-- Menu déroulant -->
-            <div v-if="showDeleteMenu === msg.id" class="delete-menu absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-40">
-              <button
-                @click.stop="deleteMessage(msg.id, false)"
-                class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100"
-              >
-                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Supprimer pour moi
-              </button>
-              <button
-                @click.stop="deleteMessage(msg.id, true)"
-                class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-              >
-                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                Supprimer pour tout le monde
-              </button>
+          <img v-else :src="conversation.avatar" class="w-10 h-10 rounded-full object-cover" />
+          <div>
+            <div class="font-semibold">{{ conversation.name }}</div>
+            <div class="text-xs text-gray-400">
+              <span>
+                <!-- En ligne -->
+                <span v-if="!isTyping && !remoteTyping">En ligne</span>
+                <span v-else>
+                  {{ typingUserName }} est en train d'écrire...
+                </span>
+              </span>
             </div>
           </div>
         </div>
+        <div class="flex gap-3 text-gray-400">
+          <!-- Icônes -->
+          <button type="button" tabindex="-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="m16.556 12.906l-.455.453s-1.083 1.076-4.038-1.862s-1.872-4.014-1.872-4.014l.286-.286c.707-.702.774-1.83.157-2.654L9.374 2.86C8.61 1.84 7.135 1.705 6.26 2.575l-1.57 1.56c-.433.432-.723.99-.688 1.61c.09 1.587.808 5 4.812 8.982c4.247 4.222 8.232 4.39 9.861 4.238c.516-.048.964-.31 1.325-.67l1.42-1.412c.96-.953.69-2.588-.538-3.255l-1.91-1.039c-.806-.437-1.787-.309-2.417.317"
+              />
+            </svg>
+          </button>
+          <button type="button" tabindex="-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M5 5.5a2.75 2.75 0 0 0-2.75 2.75v7.5A2.75 2.75 0 0 0 5 18.5h8.5a2.75 2.75 0 0 0 2.75-2.75v-1.594l3.419 3.045c.805.717 2.081.145 2.081-.934V7.365c0-1.08-1.276-1.651-2.081-.934L16.25 9.476V8.25A2.75 2.75 0 0 0 13.5 5.5z"
+              />
+            </svg>
+          </button>
+          <button type="button" tabindex="-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M9 15.25a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.249 1.249 0 1 1 2.5 0a1.25 1.25 0 1 1-2.5 0"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
-      <!-- Indicateur de frappe local (optionnel) -->
-      <div v-if="isTyping || remoteTyping" class="text-xs text-blue-600 mt-1 ml-2">En train d'écrire...</div>
+
+      <!-- Zone des messages -->
+      <div ref="chatContainer" class="flex-1 px-8 py-6 overflow-y-auto flex flex-col gap-2">
+        <div class="flex flex-col items-center">
+          <span class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full mb-2">Aujourd'hui</span>
+        </div>
+
+        <div v-if="loadingMessages" class="text-center text-sm text-gray-400">Chargement des messages...</div>
+
+        <div
+          v-for="msg in messages"
+          :key="msg.id"
+          class="flex items-end gap-2"
+          :class="msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'"
+        >
+          <!-- Avatar à gauche pour les messages reçus -->
+          <template v-if="msg.sender_id !== currentUserId">
+            <div v-if="!msg.sender_avatar" class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
+              {{ getInitials(props.conversation.name || 'Utilisateur') }}
+            </div>
+            <img v-else :src="msg.sender_avatar" class="w-8 h-8 rounded-full object-cover mb-1" />
+          </template>
+          <!-- Bulle de message -->
+          <div
+            :class="[
+              'max-w-xs px-4 py-2 rounded-2xl mb-1 shadow transition-colors relative group',
+              msg.sender_id === currentUserId
+                ? 'bg-violet-600 text-white rounded-br-none hover:bg-violet-700'
+                : 'bg-gray-100 text-gray-800 rounded-bl-none border hover:bg-gray-200'
+            ]"
+          >
+            <div>{{ msg.content }}</div>
+            <div class="text-xs text-gray-400 mt-1 text-right">
+              {{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+              <span v-if="msg.sender_id === currentUserId && msg.read_at" class="ml-1 text-violet-500" title="Lu">
+                ✓
+              </span>
+            </div>
+
+            <!-- Menu de suppression pour l'expéditeur -->
+            <div v-if="msg.sender_id === currentUserId" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <button
+                @click.stop="toggleDeleteMenu(msg.id)"
+                class="text-xs bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800 rounded-full p-1.5 shadow-sm border border-gray-200"
+                title="Options"
+                data-delete-button
+              >
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </button>
+
+              <!-- Menu déroulant -->
+              <div v-if="showDeleteMenu === msg.id" class="delete-menu absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-40">
+                <button
+                  @click.stop="deleteMessage(msg.id, false)"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100"
+                >
+                  <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Supprimer pour moi
+                </button>
+                <button
+                  @click.stop="deleteMessage(msg.id, true)"
+                  class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  Supprimer pour tout le monde
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Indicateur de frappe local (optionnel) -->
+        <!-- <div v-if="isTyping || remoteTyping" class="text-xs text-blue-600 mt-1 ml-2">En train d'écrire...</div> -->
+
+      </div>
+
+
+
+      <!-- Formulaire d’envoi -->
+      <div class="p-4 border-t flex items-center gap-2 relative">
+        <button
+          class="text-gray-400 hover:text-gray-600"
+          type="button"
+          @click="showEmojiPicker = !showEmojiPicker"
+        >
+          😊
+        </button>
+        <input
+          type="text"
+          placeholder="Écrire un message..."
+          class="flex-1 px-4 py-2 rounded-full border bg-gray-100 focus:outline-none"
+          v-model="newMessage"
+          @keyup.enter="sendMessage"
+          @input="handleTyping"
+          :disabled="sending"
+          autocomplete="off"
+        />
+        <button
+          @click="sendMessage"
+          class="bg-violet-600 text-white p-2 rounded-full hover:bg-violet-700"
+          type="button"
+          :disabled="sending || !newMessage.trim()"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M22 2L11 13"></path>
+            <path d="M22 2l-7 20-4-9-9-4 20-7z"></path>
+          </svg>
+        </button>
+        <EmojiPicker
+          v-if="showEmojiPicker"
+          @select="addEmoji"
+          :native="true"
+          style="position: absolute; bottom: 60px; left: 20px; z-index: 50;"
+        />
+      </div>
     </div>
 
-    <!-- Formulaire d’envoi -->
-    <div class="p-4 border-t flex items-center gap-2 relative">
-      <button
-        class="text-gray-400 hover:text-gray-600"
-        type="button"
-        @click="showEmojiPicker = !showEmojiPicker"
-      >
-        😊
-      </button>
-      <input
-        type="text"
-        placeholder="Écrire un message..."
-        class="flex-1 px-4 py-2 rounded-full border bg-gray-100 focus:outline-none"
-        v-model="newMessage"
-        @keyup.enter="sendMessage"
-        @input="handleTyping"
-        :disabled="sending"
-        autocomplete="off"
-      />
-      <button
-        @click="sendMessage"
-        class="bg-violet-600 text-white p-2 rounded-full hover:bg-violet-700"
-        type="button"
-        :disabled="sending || !newMessage.trim()"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M22 2L11 13"></path>
-          <path d="M22 2l-7 20-4-9-9-4 20-7z"></path>
-        </svg>
-      </button>
-      <EmojiPicker
-        v-if="showEmojiPicker"
-        @select="addEmoji"
-        :native="true"
-        style="position: absolute; bottom: 60px; left: 20px; z-index: 50;"
-      />
+    <div v-else class="flex-1 flex items-center justify-center text-gray-400 font-semibold">
+      Sélectionnez une conversation
     </div>
-  </div>
-
-  <div v-else class="flex-1 flex items-center justify-center text-gray-400 font-semibold">
-    Sélectionnez une conversation
   </div>
 </template>
