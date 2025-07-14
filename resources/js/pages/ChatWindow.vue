@@ -29,6 +29,7 @@ interface MessageReceivedEvent {
   is_read: boolean;
 }
 
+// ✅ Props pour le bouton menu mobile (optionnel)
 const props = defineProps({
   conversation: {
     type: Object,
@@ -736,3 +737,4 @@ function goBack() {
     </div>
   </div>
 </template>
+
