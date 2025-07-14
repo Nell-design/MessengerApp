@@ -27,9 +27,9 @@ Route::get('/test-broadcast', function () {
             'message_id' => $message->id,
             'conversation_id' => $message->conversation_id
         ]);
-        
+
         event(new \App\Events\MessageSentEvent($message));
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Événement MessageSentEvent diffusé',
@@ -37,10 +37,15 @@ Route::get('/test-broadcast', function () {
             'conversation_id' => $message->conversation_id
         ]);
     }
-    
+
     return response()->json([
         'error' => 'Aucun message trouvé pour le test'
     ], 404);
+});
+
+// Route de test pour visualiser le composant NoMessage
+Route::get('/test-no-message', function () {
+    return Inertia::render('TestNoMessage');
 });
 
 // API pour récupérer le nom d'un utilisateur (utilisé pour l'indicateur de frappe)
