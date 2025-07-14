@@ -25,14 +25,21 @@ class UserTypingEvent implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        \Log::info('⌨️ UserTypingEvent: Broadcast sur le canal public', [
+        $conversation = \App\Models\Conversation::find($this->conversationId);
+        $channels = [
+            new Channel('conversation.' . $this->conversationId),
+        ];
+        if ($conversation) {
+            $channels[] = new Channel('user.' . $conversation->first_id);
+            $channels[] = new Channel('user.' . $conversation->second_id);
+        }
+        \Log::info('⌨️ UserTypingEvent: Broadcast sur les canaux', [
             'conversation_id' => $this->conversationId,
             'user_id' => $this->userId,
             'is_typing' => $this->isTyping,
-            'channel' => 'conversation.'.$this->conversationId
+            'channels' => array_map(function($c) { return method_exists($c, 'name') ? $c->name() : (string)$c; }, $channels)
         ]);
-        
-        return new Channel('conversation.'.$this->conversationId);
+        return $channels;
     }
 
     public function broadcastAs()

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import Echo from 'laravel-echo';
 import { defineProps, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { getInitials } from '../composables/useInitials';
+import EmojiPicker from 'vue3-emoji-picker';
+import 'vue3-emoji-picker/css';
 
 // Types pour les événements Echo
 interface MessageSentEvent {
@@ -65,8 +68,18 @@ const loadingMessages = ref(false);
 const chatContainer = ref<HTMLElement | null>(null);
 const isTyping = ref(false);
 const typingTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
-const showDeleteMenu = ref<number | null>(null); // ID du message pour lequel afficher le menu
+const showDeleteMenu = ref<number | null>(null); // ✅ ou
+// const showDe // ID du message pour lequel afficher le menu
 const remoteTyping = ref(false);
+const typingUserId = ref<number | null>(null);
+
+const typingUserName = ref(null);
+const showEmojiPicker = ref(false);
+
+function addEmoji(emoji: any) {
+  newMessage.value += emoji.i; // emoji.i contient le caractère unicode
+  showEmojiPicker.value = false;
+}
 
 async function fetchMessages(conversationId: number) {
   try {
@@ -97,6 +110,24 @@ async function fetchMessages(conversationId: number) {
     loadingMessages.value = false;
   }
 }
+
+watch(typingUserId, async (newId) => {
+  if (newId) {
+    try {
+      const res = await fetch(`/api/users/${newId}`);
+      if (res.ok) {
+        const user = await res.json();
+        typingUserName.value = user.name;
+      } else {
+        typingUserName.value = null;
+      }
+    } catch {
+      typingUserName.value = null;
+    }
+  } else {
+    typingUserName.value = null;
+  }
+});
 
 watch(
   () => props.conversation?.id,
@@ -184,16 +215,15 @@ onMounted(() => {
         messages.value = messages.value.filter(m => m.id !== event.message_id);
       })
       .listen('UserTypingEvent', (event: UserTypingEvent) => {
-        console.log('⌨️ UserTypingEvent reçu sur conversation:', event);
-        if (event.user_id !== currentUserId) {
-          remoteTyping.value = !!event.is_typing;
-          if (event.is_typing) {
-            // On arrête l'indicateur après 3s si pas de nouveau signal
-            if (typingTimeout.value) clearTimeout(typingTimeout.value);
-            typingTimeout.value = setTimeout(() => {
-              remoteTyping.value = false;
-            }, 3000);
-          }
+        // Affiche l'indicateur pour tous les participants, y compris celui qui tape
+        remoteTyping.value = !!event.is_typing;
+        typingUserId.value = event.is_typing ? event.user_id : null;
+        if (event.is_typing) {
+          if (typingTimeout.value) clearTimeout(typingTimeout.value);
+          typingTimeout.value = window.setTimeout(() => {
+            remoteTyping.value = false;
+            typingUserId.value = null;
+          }, 3000);
         }
       })
       .listen('MessageReceivedEvent', (event: MessageReceivedEvent) => {
@@ -386,20 +416,34 @@ async function sendTypingStatus(isTypingStatus: boolean) {
   }
 }
 
+// --- Refactor gestion du typing ---
+let typingDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+
 function handleTyping() {
+  // Toujours envoyer le statut "en train d'écrire" à chaque frappe, mais pas plus d'une fois toutes les 1s
+  if (typingDebounceTimeout) clearTimeout(typingDebounceTimeout);
+
   if (!isTyping.value) {
     isTyping.value = true;
     sendTypingStatus(true);
+    console.log('[TYPING] sendTypingStatus(true)');
   }
 
-  if (typingTimeout.value) {
-    clearTimeout(typingTimeout.value);
-  }
-
+  // On repousse le "stop typing" à chaque frappe
+  if (typingTimeout.value) clearTimeout(typingTimeout.value);
   typingTimeout.value = setTimeout(() => {
     isTyping.value = false;
     sendTypingStatus(false);
+    console.log('[TYPING] sendTypingStatus(false)');
   }, 2000);
+
+  // Debounce pour éviter le spam de "true" si on tape très vite
+  typingDebounceTimeout = setTimeout(() => {
+    if (isTyping.value) {
+      sendTypingStatus(true);
+      console.log('[TYPING] sendTypingStatus(true) [debounce]');
+    }
+  }, 1000);
 }
 
 async function markMessagesAsRead() {
@@ -515,6 +559,10 @@ function handleScroll() {
     markConversationAsRead(props.conversation.id);
   }
 }
+
+// Récupère le nom de l'utilisateur qui tape dès que typingUserId change
+
+
 </script>
 
 <template>
@@ -536,11 +584,14 @@ function handleScroll() {
             />
           </svg>
         </button>
-        <img :src="conversation.avatar || '/default-avatar.png'" class="w-10 h-10 rounded-full object-cover" />
+        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover" v-if="!conversation.avatar">
+          {{ getInitials(conversation.name) }}
+        </div>
+        <img v-else :src="conversation.avatar" class="w-10 h-10 rounded-full object-cover" />
         <div>
           <div class="font-semibold">{{ conversation.name }}</div>
           <div class="text-xs text-gray-400">
-            <span v-if="remoteTyping">En train d'écrire...</span>
+            <span v-if="remoteTyping && typingUserName">{{ typingUserName }} est en train d'écrire...</span>
             <span v-else>En ligne</span>
           </div>
         </div>
@@ -589,11 +640,12 @@ function handleScroll() {
         :class="msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'"
       >
         <!-- Avatar à gauche pour les messages reçus -->
-        <img
-          v-if="msg.sender_id !== currentUserId"
-          :src="msg.sender_avatar || '/default-avatar.png'"
-          class="w-8 h-8 rounded-full object-cover mb-1"
-        />
+        <template v-if="msg.sender_id !== currentUserId">
+          <div v-if="!msg.sender_avatar" class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
+            {{ getInitials(props.conversation.name || 'Utilisateur') }}
+          </div>
+          <img v-else :src="msg.sender_avatar" class="w-8 h-8 rounded-full object-cover mb-1" />
+        </template>
         <!-- Bulle de message -->
         <div
           :class="[
@@ -649,18 +701,17 @@ function handleScroll() {
         </div>
       </div>
       <!-- Indicateur de frappe local (optionnel) -->
-      <div v-if="isTyping && !remoteTyping" class="text-xs text-gray-400 mt-2 self-end">Vous écrivez...</div>
+      <div v-if="isTyping || remoteTyping" class="text-xs text-blue-600 mt-1 ml-2">En train d'écrire...</div>
     </div>
 
     <!-- Formulaire d’envoi -->
-    <div class="p-4 border-t flex items-center gap-2">
-      <button class="text-gray-400 hover:text-gray-600" type="button" tabindex="-1">
-        <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24">
-          <path
-            fill="currentColor"
-            d="M14.36 14.23a3.76 3.76 0 0 1-4.72 0a1 1 0 0 0-1.28 1.54a5.68 5.68 0 0 0 7.28 0a1 1 0 1 0-1.28-1.54M9 11a1 1 0 1 0-1-1a1 1 0 0 0 1 1m6-2a1 1 0 1 0 1 1a1 1 0 0 0-1-1m-3-7a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 18a8 8 0 1 1 8-8a8 8 0 0 1-8 8"
-          />
-        </svg>
+    <div class="p-4 border-t flex items-center gap-2 relative">
+      <button
+        class="text-gray-400 hover:text-gray-600"
+        type="button"
+        @click="showEmojiPicker = !showEmojiPicker"
+      >
+        😊
       </button>
       <input
         type="text"
@@ -683,6 +734,12 @@ function handleScroll() {
           <path d="M22 2l-7 20-4-9-9-4 20-7z"></path>
         </svg>
       </button>
+      <EmojiPicker
+        v-if="showEmojiPicker"
+        @select="addEmoji"
+        :native="true"
+        style="position: absolute; bottom: 60px; left: 20px; z-index: 50;"
+      />
     </div>
   </div>
 
