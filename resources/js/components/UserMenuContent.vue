@@ -9,8 +9,14 @@ interface Props {
     user: User;
 }
 
-const handleLogout = () => {
-    router.flushAll();
+const handleLogout = (e?: Event) => {
+    if (e) e.preventDefault();
+    router.post(route('logout'), {
+        onSuccess: () => {
+            // Remplace l'historique pour empêcher le retour sur dashboard
+            router.visit('/', { replace: true });
+        }
+    });
 };
 
 defineProps<Props>();
@@ -33,7 +39,7 @@ defineProps<Props>();
     </DropdownMenuGroup>
     <DropdownMenuSeparator />
     <DropdownMenuItem :as-child="true">
-        <Link class="block w-full" method="post" :href="route('logout')" @click="handleLogout" as="button">
+        <Link class="block w-full" method="post" :href="route('logout')" @click.prevent="handleLogout" as="button">
             <LogOut class="mr-2 h-4 w-4" />
             Log out
         </Link>
