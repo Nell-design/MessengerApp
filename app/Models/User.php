@@ -2,47 +2,71 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use Notifiable, HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'avatar',
+        'last_connexion',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $casts = [
+        'last_connexion' => 'datetime',
+    ];
+
+    // Relations
+    public function sentMessages()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
+    }
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class, 'first_id')
+            ->orWhere(function ($query) {
+                $query->where('second_id', $this->id);
+            });
+    }
+
+    // Ajoutez dans app/Models/User.php
+    public function lastMessageWithAuthUser()
+    {
+        return $this->hasOne(Message::class, 'sender_id')
+            ->where('receiver_id', auth()->id())
+            ->orWhere(function ($q) {
+                $q->where('sender_id', auth()->id())
+                    ->where('receiver_id', $this->id);
+            })
+            ->latest();
+    }
+
+    // Méthodes utilitaires
+    public function getConversationWith($userId)
+    {
+        return Conversation::where(function ($query) use ($userId) {
+            $query->where('first_id', $this->id)
+                ->where('second_id', $userId);
+        })->orWhere(function ($query) use ($userId) {
+            $query->where('first_id', $userId)
+                ->where('second_id', $this->id);
+        })->first();
     }
 }

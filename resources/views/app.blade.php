@@ -4,6 +4,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        {{-- CSRF Token pour sécuriser les requêtes --}}
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>
             (function() {
@@ -40,7 +43,7 @@
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
         @routes
-        @vite(['resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
+        @vite(['resources/js/app.ts'])
         @inertiaHead
     </head>
     <body class="font-sans antialiased">
