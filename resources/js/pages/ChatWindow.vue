@@ -171,7 +171,7 @@ onMounted(() => {
   if (conversationId) {
     console.log('📡 Initialisation des listeners pour la conversation:', conversationId);
 
-    // Écouter sur le canal conversation (comme dans SidebarConversations)
+    // Écouter sur le canal conversation (messages, suppression, etc.)
     (window as any).Echo.channel(`conversation`)
       .listen('MessageSentEvent', (event: any) => {
         if (currentUserId === event.receiver_id) {
@@ -214,18 +214,7 @@ onMounted(() => {
         console.log('🗑️ MessageDeletedForEveryoneEvent reçu sur conversation:', event);
         messages.value = messages.value.filter(m => m.id !== event.message_id);
       })
-      .listen('UserTypingEvent', (event: UserTypingEvent) => {
-        // Affiche l'indicateur pour tous les participants, y compris celui qui tape
-        remoteTyping.value = !!event.is_typing;
-        typingUserId.value = event.is_typing ? event.user_id : null;
-        if (event.is_typing) {
-          if (typingTimeout.value) clearTimeout(typingTimeout.value);
-          typingTimeout.value = window.setTimeout(() => {
-            remoteTyping.value = false;
-            typingUserId.value = null;
-          }, 3000);
-        }
-      })
+      // On retire la gestion du typing ici
       .listen('MessageReceivedEvent', (event: MessageReceivedEvent) => {
         console.log('✅ MessageReceivedEvent reçu sur conversation:', event);
         // Met à jour le statut de lecture du message dans la liste
@@ -241,9 +230,24 @@ onMounted(() => {
     console.log('✅ ChatWindow: Listeners de conversation configurés pour:', conversationId);
   }
 
-  // Écouter sur le canal utilisateur pour recevoir les messages même si on n'est pas dans la conversation
+  // Écouter sur le canal utilisateur pour le typing (et messages reçus hors conversation active)
   console.log('📡 Initialisation du listener utilisateur pour:', currentUserId);
-  (window as any).Echo.channel(`user.${currentUserId}`)
+  console.log('[ECHO] Tentative abonnement canal user', currentUserId);
+  (window as any).Echo.private(`user.${currentUserId}`)
+    // Gestion du typing en temps réel uniquement pour le destinataire
+    .listen('UserTypingEvent', (event: UserTypingEvent) => {
+      console.log('[ECHO] UserTypingEvent reçu', event);
+      // Affiche l'indicateur uniquement chez le destinataire
+      remoteTyping.value = !!event.is_typing;
+      typingUserId.value = event.is_typing ? event.user_id : null;
+      if (event.is_typing) {
+        if (typingTimeout.value) clearTimeout(typingTimeout.value);
+        typingTimeout.value = window.setTimeout(() => {
+          remoteTyping.value = false;
+          typingUserId.value = null;
+        }, 3000);
+      }
+    })
     .listen('MessageSentEvent', (event: MessageSentEvent) => {
       console.log('📨 MessageSentEvent reçu sur canal utilisateur:', event);
 
@@ -561,8 +565,11 @@ function goBack() {
             <div class="font-semibold">{{ conversation.name }}</div>
             <div class="text-xs text-gray-400">
               <span>
-                <!-- En ligne -->
-                <span v-if="!isTyping && !remoteTyping">En ligne</span>
+                <!--
+                  Affiche 'est en train d'écrire...' uniquement si c'est un autre utilisateur qui tape.
+                  Si c'est l'utilisateur courant qui tape, on garde 'En ligne'.
+                -->
+                <span v-if="!remoteTyping || typingUserId === currentUserId">En ligne</span>
                 <span v-else>
                   {{ typingUserName }} est en train d'écrire...
                 </span>
