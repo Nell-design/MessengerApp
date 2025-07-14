@@ -135,6 +135,7 @@ async function markConversationAsRead(conversationId: number) {
 
     const response = await fetch(`/notifications/conversation/${conversationId}/read`, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'X-CSRF-TOKEN': csrfToken,
         'Accept': 'application/json',
@@ -158,6 +159,7 @@ async function markAllAsRead() {
 
     const response = await fetch('/notifications/mark-all-read', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'X-CSRF-TOKEN': csrfToken,
         'Accept': 'application/json',

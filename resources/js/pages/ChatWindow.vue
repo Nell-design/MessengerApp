@@ -332,6 +332,7 @@ async function sendMessage() {
 
     const res = await fetch('/messages', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': csrfToken,
@@ -373,6 +374,7 @@ async function deleteMessage(messageId: number, forEveryone: boolean = false) {
 
     const res = await fetch(url, {
       method: 'DELETE',
+      credentials: 'same-origin',
       headers: {
         'X-CSRF-TOKEN': csrfToken,
         Accept: 'application/json',
@@ -402,6 +404,7 @@ async function sendTypingStatus(isTypingStatus: boolean) {
 
     await fetch('/messages/typing', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': csrfToken,
@@ -462,6 +465,7 @@ async function markConversationAsRead(conversationId: number) {
     // Utiliser la nouvelle route pour marquer tous les messages comme lus
     const response = await fetch(`/conversations/${conversationId}/messages/read`, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'X-CSRF-TOKEN': csrfToken,
         'Accept': 'application/json',

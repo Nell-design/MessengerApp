@@ -94,6 +94,7 @@ async function addConversation(user: User) {
 
         const res = await fetch('/conversations/start', {
             method: 'POST',
+            credentials: 'same-origin', // <-- Ajouté
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
