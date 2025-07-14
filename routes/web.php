@@ -43,6 +43,9 @@ Route::get('/test-broadcast', function () {
     ], 404);
 });
 
+// API pour récupérer le nom d'un utilisateur (utilisé pour l'indicateur de frappe)
+Route::get('/api/users/{id}', [\App\Http\Controllers\UserController::class, 'show'])->middleware('auth');
+
 // Page de messagerie après connexion
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {

@@ -3,6 +3,7 @@ import { router } from '@inertiajs/vue3';
 import { defineEmits, onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue';
 import NotificationManager from '../components/NotificationManager.vue';
 import { usePage } from '@inertiajs/vue3';
+import { getInitials } from '../composables/useInitials';
 
 const emit = defineEmits(['select-conversation']);
 
@@ -492,6 +493,14 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
         <NotificationManager ref="notificationManager" :current-user-id="currentUserId"
             @increment-unread="handleIncrementUnread" @new-message="handleNewMessage" />
 
+        <div class="flex items-center gap-3 px-6 py-4 border-b">
+            <div v-if="!user.avatar" class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover">
+                {{ getInitials(user.name) }}
+            </div>
+            <img v-else :src="user.avatar" class="w-10 h-10 rounded-full object-cover" />
+            <div class="font-semibold text-gray-800">{{ user.name }}</div>
+        </div>
+
         <div class="flex items-center justify-between rounded-tl-xl bg-violet-600 px-6 py-4 text-white">
             <span class="text-lg font-bold">Messages</span>
             <button class="rounded-full bg-violet-500 p-2 hover:bg-violet-700"
@@ -535,10 +544,10 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm text-gray-500 truncate">
                                     <template v-if="conv.last_message">
-                                        <span v-if="conv.last_message.sender_id !== currentUserId"
+                                        <!-- <span v-if="conv.last_message.sender_id !== currentUserId"
                                             class="font-medium text-gray-700">
                                             {{ conv.last_message.sender_name }}:
-                                        </span>
+                                        </span> -->
                                         <span class="truncate">{{ conv.last_message.content }}</span>
                                     </template>
                                     <template v-else>
@@ -583,14 +592,16 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
                 <h2 class="text-lg font-bold">Ajouter un utilisateur</h2>
                 <button @click="showUserModal = false" class="text-gray-600 hover:text-black">X</button>
             </div>
-            <ul>
-                <li v-for="user in allUsers" :key="user.id"
-                    class="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                    @click="addConversation(user)">
-                    <img :src="user.avatar || '/default-avatar.png'" class="h-10 w-10 rounded-full object-cover" />
-                    <span>{{ user.name }}</span>
-                </li>
-            </ul>
+            <div class="max-h-72 overflow-y-auto">
+                <ul>
+                    <li v-for="user in allUsers" :key="user.id"
+                        class="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        @click="addConversation(user)">
+                        <img :src="user.avatar || '/default-avatar.png'" class="h-10 w-10 rounded-full object-cover" />
+                        <span>{{ user.name }}</span>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </template>
