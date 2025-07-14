@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import Echo from 'laravel-echo';
-import { defineProps, ref, watch, nextTick, onMounted, onUnmounted, computed } from 'vue';
-import { getInitials } from '../composables/useInitials';
+import { defineProps, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import EmojiPicker from 'vue3-emoji-picker';
 import 'vue3-emoji-picker/css';
 
@@ -59,6 +57,7 @@ interface Message {
   sender_avatar?: string;
   receiver_avatar?: string;
   read_at?: string | null;
+  sender_name?: string;
 }
 
 const messages = ref<Message[]>([]);
@@ -131,7 +130,7 @@ watch(typingUserId, async (newId) => {
 
 watch(
   () => props.conversation?.id,
-  (newId, oldId) => {
+  (newId) => {
     if (newId) {
       fetchMessages(newId);
       markConversationAsRead(newId);
@@ -156,9 +155,6 @@ watch(messages, async () => {
 });
 
 onMounted(() => {
-  let echoChannel: any = null;
-  let userChannel: any = null;
-
   // Récupérer l'ID de la conversation
   const conversationId = props.conversation?.id;
   const currentUserId = props.currentUserId;
@@ -172,7 +168,7 @@ onMounted(() => {
     console.log('📡 Initialisation des listeners pour la conversation:', conversationId);
 
     // Écouter sur le canal conversation (comme dans SidebarConversations)
-    echoChannel = (window as any).Echo.channel(`conversation`)
+    (window as any).Echo.channel(`conversation`)
       .listen('MessageSentEvent', (event: any) => {
         if (currentUserId === event.receiver_id) {
           console.log("📨 Message reçu pour l'utilisateur actuel sur canal conversation dans ChatWindow");
@@ -243,7 +239,7 @@ onMounted(() => {
 
   // Écouter sur le canal utilisateur pour recevoir les messages même si on n'est pas dans la conversation
   console.log('📡 Initialisation du listener utilisateur pour:', currentUserId);
-  userChannel = (window as any).Echo.channel(`user.${currentUserId}`)
+  (window as any).Echo.channel(`user.${currentUserId}`)
     .listen('MessageSentEvent', (event: MessageSentEvent) => {
       console.log('📨 MessageSentEvent reçu sur canal utilisateur:', event);
 
@@ -385,8 +381,8 @@ async function deleteMessage(messageId: number, forEveryone: boolean = false) {
 
     messages.value = messages.value.filter(m => m.id !== messageId);
     showDeleteMenu.value = null;
-  } catch (error) {
-    console.error('❌ Erreur lors de la suppression du message :', error);
+  } catch (e) {
+    console.error('❌ Erreur lors de la suppression du message :', e);
   }
 }
 
@@ -446,70 +442,7 @@ function handleTyping() {
   }, 1000);
 }
 
-async function markMessagesAsRead() {
-  if (!props.conversation?.id || !messages.value.length) return;
-
-  try {
-    const unreadMessages = messages.value.filter(msg =>
-      msg.sender_id !== props.currentUserId &&
-      (!('read_at' in msg) || !msg.read_at)
-    );
-
-    if (unreadMessages.length === 0) return;
-
-    console.log('📖 Tentative de marquage de', unreadMessages.length, 'messages comme lus');
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (!csrfToken) {
-      console.warn('❌ CSRF token introuvable');
-      return;
-    }
-
-    // Marquer les messages comme lus en parallèle
-    const promises = unreadMessages.map(async (message) => {
-      try {
-        console.log('📖 Marquage du message', message.id, 'comme lu');
-
-        const response = await fetch(`/messages/${message.id}/read`, {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          // Mettre à jour le message localement
-          const messageIndex = messages.value.findIndex(m => m.id === message.id);
-          if (messageIndex !== -1) {
-            messages.value[messageIndex] = {
-              ...messages.value[messageIndex],
-              read_at: new Date().toISOString()
-            };
-          }
-          console.log('✅ Message', message.id, 'marqué comme lu');
-          return { success: true, messageId: message.id };
-        } else {
-          const errorText = await response.text();
-          console.warn('⚠️ Erreur lors du marquage du message', message.id, ':', response.status, errorText);
-          return { success: false, messageId: message.id, error: errorText };
-        }
-      } catch (error) {
-        console.error('❌ Erreur lors du marquage du message', message.id, ':', error);
-        return { success: false, messageId: message.id, error: error };
-      }
-    });
-
-    const results = await Promise.all(promises);
-    const successCount = results.filter(r => r.success).length;
-    const errorCount = results.filter(r => !r.success).length;
-
-    console.log(`📖 Résultat du marquage: ${successCount} succès, ${errorCount} erreurs`);
-
-  } catch (error) {
-    console.error('❌ Erreur lors du marquage des messages comme lus:', error);
-  }
-}
+// (markMessagesAsRead supprimée car non utilisée)
 
 async function markConversationAsRead(conversationId: number) {
   try {
@@ -612,10 +545,14 @@ function goBack() {
               />
             </svg>
           </button>
-          <div class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover" v-if="!conversation.avatar">
-            {{ getInitials(conversation.name) }}
-          </div>
-          <img v-else :src="conversation.avatar" class="w-10 h-10 rounded-full object-cover" />
+          <template v-if="!conversation.avatar || conversation.avatar === '/default-avatar.png'">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover">
+              {{ (conversation.name || '').substring(0, 2).toUpperCase() }}
+            </div>
+          </template>
+          <template v-else>
+            <img :src="conversation.avatar" class="w-10 h-10 rounded-full object-cover" />
+          </template>
           <div>
             <div class="font-semibold">{{ conversation.name }}</div>
             <div class="text-xs text-gray-400">
@@ -674,10 +611,14 @@ function goBack() {
         >
           <!-- Avatar à gauche pour les messages reçus -->
           <template v-if="msg.sender_id !== currentUserId">
-            <div v-if="!msg.sender_avatar" class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
-              {{ getInitials(props.conversation.name || 'Utilisateur') }}
-            </div>
-            <img v-else :src="msg.sender_avatar" class="w-8 h-8 rounded-full object-cover mb-1" />
+            <template v-if="!msg.sender_avatar || msg.sender_avatar === '/default-avatar.png'">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
+                {{ ((msg.sender_name && msg.sender_name.trim()) ? msg.sender_name : (msg.sender?.name || '??')).substring(0, 2).toUpperCase() }}
+              </div>
+            </template>
+            <template v-else>
+              <img :src="msg.sender_avatar" class="w-8 h-8 rounded-full object-cover mb-1" />
+            </template>
           </template>
           <!-- Bulle de message -->
           <div

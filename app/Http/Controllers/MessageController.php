@@ -39,6 +39,7 @@ class MessageController extends Controller
                 'created_at' => $msg->created_at,
                 'sender_avatar' => $msg->sender?->avatar ?? '/default-avatar.png',
                 'receiver_avatar' => $msg->receiver?->avatar ?? '/default-avatar.png',
+                'sender_name' => $msg->sender?->name ?? '',
             ];
         });
 
@@ -110,7 +111,7 @@ public function store(StoreMessageRequest $request)
         $this->authorize('delete', $message);
 
         $forEveryone = $request->boolean('for_everyone', false);
-        
+
         \Log::info('🗑️ MessageController: Suppression de message', [
             'message_id' => $message->id,
             'conversation_id' => $message->conversation_id,
@@ -169,7 +170,7 @@ public function store(StoreMessageRequest $request)
                 'user_id' => auth()->id(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'error' => 'Erreur lors du marquage comme lu',
                 'message' => $e->getMessage()
@@ -211,7 +212,7 @@ public function store(StoreMessageRequest $request)
                 'user_id' => auth()->id(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'error' => 'Erreur lors du marquage comme lu',
                 'message' => $e->getMessage()
@@ -233,7 +234,7 @@ public function store(StoreMessageRequest $request)
             $conversationId = $request->input('conversation_id');
             $isTyping = $request->input('is_typing');
             $userId = auth()->id();
-            
+
             \Log::info('⌨️ MessageController: Statut de frappe', [
                 'conversation_id' => $conversationId,
                 'user_id' => $userId,
@@ -254,7 +255,7 @@ public function store(StoreMessageRequest $request)
                 'request_data' => $request->all(),
                 'user_id' => auth()->id()
             ]);
-            
+
             return response()->json([
                 'error' => 'Erreur lors de l\'envoi du statut de frappe',
                 'message' => $e->getMessage()

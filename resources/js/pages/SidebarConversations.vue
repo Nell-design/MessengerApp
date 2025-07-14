@@ -3,7 +3,7 @@ import { router } from '@inertiajs/vue3';
 import { defineEmits, onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import NotificationManager from '../components/NotificationManager.vue';
 import { usePage } from '@inertiajs/vue3';
-import { getInitials } from '../composables/useInitials';
+import UserInfo from '@/components/UserInfo.vue';
 
 const emit = defineEmits(['select-conversation']);
 
@@ -490,11 +490,8 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
             @increment-unread="handleIncrementUnread" @new-message="handleNewMessage" />
 
         <div class="flex items-center gap-3 px-6 py-4 border-b">
-            <div v-if="!user.avatar" class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover">
-                {{ getInitials(user.name) }}
-            </div>
-            <img v-else :src="user.avatar" class="w-10 h-10 rounded-full object-cover" />
-            <div class="font-semibold text-gray-800">{{ user.name }}</div>
+            <!-- Utilisation de UserInfo pour l'utilisateur connecté (affiche initiales si pas d'avatar) -->
+            <UserInfo :user="user" />
         </div>
 
         <div class="flex items-center justify-between rounded-tl-xl bg-violet-600 px-6 py-4 text-white">
@@ -520,11 +517,17 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
                         conv.id === props.selectedConversationId ? 'bg-violet-50 border-l-4 border-violet-600 shadow-sm' : 'hover:bg-gray-50',
                         conv.id === props.selectedConversationId ? 'text-violet-800' : 'text-gray-800'
                     ]" @click="goToConversation(conv.id)">
-                    <!-- Avatar -->
+                    <!-- Avatar de la conversation : initiales si pas d'avatar -->
                     <div class="relative mr-3 flex-shrink-0">
-                        <img :src="conv.avatar || '/default-avatar.png'"
-                            class="h-10 w-10 rounded-full object-cover border-2"
-                            :class="conv.id === props.selectedConversationId ? 'border-violet-600' : 'border-gray-200'" />
+                        <template v-if="!conv.avatar || conv.avatar === '/default-avatar.png'">
+                            <div class="h-10 w-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover">
+                                {{ conv.name.substring(0, 2).toUpperCase() }}
+                            </div>
+                        </template>
+                        <template v-else>
+                            <img :src="conv.avatar" class="h-10 w-10 rounded-full object-cover border-2"
+                                :class="conv.id === props.selectedConversationId ? 'border-violet-600' : 'border-gray-200'" />
+                        </template>
                     </div>
 
                     <!-- Contenu principal -->
@@ -540,10 +543,6 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm text-gray-500 truncate">
                                     <template v-if="conv.last_message">
-                                        <!-- <span v-if="conv.last_message.sender_id !== currentUserId"
-                                            class="font-medium text-gray-700">
-                                            {{ conv.last_message.sender_name }}:
-                                        </span> -->
                                         <span class="truncate">{{ conv.last_message.content }}</span>
                                     </template>
                                     <template v-else>
@@ -593,7 +592,14 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
                     <li v-for="user in allUsers" :key="user.id"
                         class="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 cursor-pointer"
                         @click="addConversation(user)">
-                        <img :src="user.avatar || '/default-avatar.png'" class="h-10 w-10 rounded-full object-cover" />
+                        <template v-if="!user.avatar || user.avatar === '/default-avatar.png'">
+                            <div class="h-10 w-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover">
+                                {{ (user.name || '').substring(0, 2).toUpperCase() }}
+                            </div>
+                        </template>
+                        <template v-else>
+                            <img :src="user.avatar" class="h-10 w-10 rounded-full object-cover" />
+                        </template>
                         <span>{{ user.name }}</span>
                     </li>
                 </ul>
