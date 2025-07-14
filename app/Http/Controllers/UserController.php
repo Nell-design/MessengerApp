@@ -49,4 +49,14 @@ public function listAll()
 
         return response()->json($users);
     }
+
+    public function show($id)
+    {
+        $user = User::findOrFail($id);
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar' => $user->avatar,
+        ]);
+    }
 }
