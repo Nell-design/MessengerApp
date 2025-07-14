@@ -140,8 +140,8 @@ onMounted(() => {
   if (conversationId) {
     console.log('📡 Initialisation des listeners pour la conversation:', conversationId);
 
-    // Écouter sur le canal conversation (comme dans SidebarConversations)
-    echoChannel = (window as any).Echo.channel(`conversation`)
+    // Correction : écouter sur le canal conversation.{conversationId} (et non pas conversation)
+    echoChannel = (window as any).Echo.channel(`conversation.${conversationId}`)
       .listen('MessageSentEvent', (event: any) => {
         if (currentUserId === event.receiver_id) {
           console.log("📨 Message reçu pour l'utilisateur actuel sur canal conversation dans ChatWindow");
