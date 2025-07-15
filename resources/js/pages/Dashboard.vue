@@ -31,6 +31,11 @@ function openSidebar() {
   selected.value = null;
 }
 
+// Fonction à passer à ChatWindow pour notifier la lecture d'une conversation
+function handleConversationRead(conversationId) {
+  sidebarRef.value?.refreshConversations?.();
+}
+
 // Détection du mode mobile (largeur < 640px)
 const isMobile = ref(window.innerWidth < 640);
 
@@ -69,6 +74,8 @@ const showChatArea = computed(() => !isMobile.value || selected.value);
                 :currentUserId="user.id"
                 :onMessageSent="onMessageSent"
                 :onOpenSidebar="openSidebar"
+                :onConversationRead="handleConversationRead"
+                :isActive="true"
             />
             <NoMessage v-else class="flex-1 flex flex-col items-center justify-center h-full" />
         </div>

@@ -47,6 +47,15 @@ const props = defineProps({
     type: Function,
     required: false,
   },
+  onConversationRead: {
+    type: Function,
+    required: false,
+  },
+  isActive: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
 });
 
 interface Message {
@@ -196,6 +205,8 @@ onMounted(() => {
                   chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
                 }
               });
+              // Ajout : marquer la conversation comme lue dès qu'un message est reçu dans la conversation ouverte
+              markConversationAsRead(conversationId);
             } else {
               console.log('⚠️ ChatWindow: Message déjà présent, ignoré:', event.message.id);
             }
@@ -268,6 +279,8 @@ onMounted(() => {
               chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
             }
           });
+          // Ajout : marquer la conversation comme lue dès qu'un message est reçu dans la conversation ouverte
+          markConversationAsRead(conversationId);
         } else {
           console.log('⚠️ ChatWindow: Message déjà présent dans la conversation active, ignoré:', event.message.id);
         }
@@ -454,6 +467,7 @@ function handleTyping() {
 // (markMessagesAsRead supprimée car non utilisée)
 
 async function markConversationAsRead(conversationId: number) {
+  if (!props.isActive) return; // Ne marque comme lu que si la conversation est affichée
   try {
     console.log('📖 Marquage de tous les messages de la conversation', conversationId, 'comme lus');
 
@@ -484,6 +498,10 @@ async function markConversationAsRead(conversationId: number) {
           };
         }
       });
+      // Appeler le callback pour notifier le parent (Dashboard.vue)
+      if (props.onConversationRead) {
+        props.onConversationRead(conversationId);
+      }
     } else {
       const errorText = await response.text();
       console.warn('⚠️ Erreur lors du marquage de la conversation comme lue:', response.status, errorText);
