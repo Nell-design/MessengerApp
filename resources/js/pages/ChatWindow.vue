@@ -236,6 +236,8 @@ onMounted(() => {
             content: ''
           };
         }
+        // Refetch automatique pour garantir la synchro
+        fetchMessages(props.conversation.id);
       })
       // On retire la gestion du typing ici
       .listen('MessageReceivedEvent', (event: MessageReceivedEvent) => {
