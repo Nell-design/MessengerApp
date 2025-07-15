@@ -174,6 +174,8 @@ async function fetchConversations() {
         console.log("✅ Conversations récupérées :", data);
         conversations.value = data.map((conv: any) => ({
             id: conv.id,
+            first_id: conv.first_id,
+            second_id: conv.second_id,
             name: conv.name,
             avatar: conv.avatar || '/default-avatar.png',
             message: conv.message,

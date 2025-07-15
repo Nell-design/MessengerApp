@@ -41,3 +41,20 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     
     return $hasAccess;
 });
+
+Broadcast::channel('conversation.{conversationId}.{receiverId}', function ($user, $conversationId, $receiverId) {
+    // Seul le receiver peut écouter ce canal
+    return (int) $user->id === (int) $receiverId;
+});
+
+Broadcast::channel('conversationTyping.{conversationId}.{receiverId}.{isTyping}', function ($user, $conversationId, $receiverId, $isTyping) {
+    $hasAccess = (int) $user->id === (int) $receiverId;
+    \Log::info('🔐 Autorisation canal typing', [
+        'user_id' => $user->id,
+        'conversation_id' => $conversationId,
+        'receiver_id' => $receiverId,
+        'is_typing' => $isTyping,
+        'has_access' => $hasAccess
+    ]);
+    return $hasAccess;
+});

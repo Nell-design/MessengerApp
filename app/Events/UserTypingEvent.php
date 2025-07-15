@@ -15,43 +15,38 @@ class UserTypingEvent implements ShouldBroadcastNow
     public $conversationId;
     public $userId;
     public $isTyping;
+    public $receiverId;
 
-    public function __construct($conversationId, $userId, $isTyping)
+    public function __construct($conversationId, $userId, $isTyping, $receiverId)
     {
-        $this->conversationId = $conversationId;
-        $this->userId = $userId;
-        $this->isTyping = $isTyping;
+       // dd($conversationId, $isTyping, $userId, $receiverId);
+       $this->conversationId = $conversationId;
+       $this->userId = $userId;
+       $this->isTyping = $isTyping;
+       $this->receiverId = $receiverId;
     }
 
     public function broadcastOn()
     {
-        $conversation = \App\Models\Conversation::find($this->conversationId);
-        $channels = [
-            new Channel('conversation.' . $this->conversationId),
+        // Diffuse à la fois pour le receiver et le sender (pour faciliter les tests)
+        return [
+            new PrivateChannel('conversationTyping.' . $this->conversationId . '.' . $this->receiverId . '.' . $this->isTyping),
+            new PrivateChannel('conversationTyping.' . $this->conversationId . '.' . $this->userId . '.' . $this->isTyping),
         ];
-        if ($conversation) {
-            $channels[] = new Channel('user.' . $conversation->first_id);
-            $channels[] = new Channel('user.' . $conversation->second_id);
-        }
-        \Log::info('⌨️ UserTypingEvent: Broadcast sur les canaux', [
-            'conversation_id' => $this->conversationId,
-            'user_id' => $this->userId,
-            'is_typing' => $this->isTyping,
-            'channels' => array_map(function($c) { return method_exists($c, 'name') ? $c->name() : (string)$c; }, $channels)
-        ]);
-        return $channels;
     }
 
-    public function broadcastAs()
+    /* public function broadcastAs()
     {
         return 'UserTypingEvent';
-    }
+    } */
 
     public function broadcastWith()
     {
         return [
-            'user_id' => $this->userId,
-            'is_typing' => $this->isTyping
+            
+            'is_typing' => $this->isTyping,
+            'conversation_id' => $this->conversationId,
+            'receiver_id' => $this->receiverId
         ];
     }
 }

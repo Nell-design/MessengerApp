@@ -62,6 +62,8 @@ class ConversationService
                 ]);
                 return [
                     'id' => $conv->id,
+                    'first_id' => $conv->first_id,
+                    'second_id' => $conv->second_id,
                     'name' => $otherUser?->name ?? 'Utilisateur inconnu',
                     'avatar' => $otherUser?->avatar ?? '/default-avatar.png',
                     'unread_count' => $unreadCount,

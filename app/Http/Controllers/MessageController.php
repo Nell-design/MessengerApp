@@ -236,7 +236,9 @@ public function store(StoreMessageRequest $request)
      */
     public function typingStatus(Request $request)
     {
+        
         try {
+            
         $request->validate([
             'conversation_id' => 'required|exists:conversations,id',
             'is_typing' => 'required|boolean',
@@ -245,17 +247,26 @@ public function store(StoreMessageRequest $request)
             $conversationId = $request->input('conversation_id');
             $isTyping = $request->input('is_typing');
             $userId = auth()->id();
+           
 
-            \Log::info('⌨️ MessageController: Statut de frappe', [
-                'conversation_id' => $conversationId,
-                'user_id' => $userId,
-                'is_typing' => $isTyping
-            ]);
+            $conversation = \App\Models\Conversation::findOrFail($conversationId);
+            // Trouver l'autre participant
+            $receiverId = $request->input('receiver_id');
+            if (!$receiverId) {
+                // Si non fourni, on le calcule comme avant
+                $receiverId = $conversation->first_id == $userId ? $conversation->second_id : $conversation->first_id;
+            }
+
+            \Log::info('TypingStatus: userId=' . $userId . ', receiverId=' . $receiverId . ', conversationId=' . $conversationId);
+
+           // dd($conversationId, $isTyping, $userId, $receiverId);
+
 
             event(new UserTypingEvent(
                 $conversationId,
                 $userId,
-                $isTyping
+                $isTyping,
+                $receiverId
             ));
 
         return response()->noContent();
