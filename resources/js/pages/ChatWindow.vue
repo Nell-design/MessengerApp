@@ -221,11 +221,20 @@ onMounted(() => {
       })
       .listen('MessageDeletedEvent', (event: MessageDeletedEvent) => {
         console.log('🗑️ MessageDeletedEvent reçu sur conversation:', event);
+        // Suppression pour moi : on retire le message
         messages.value = messages.value.filter(m => m.id !== event.message_id);
       })
       .listen('MessageDeletedForEveryoneEvent', (event: MessageDeletedEvent) => {
         console.log('🗑️ MessageDeletedForEveryoneEvent reçu sur conversation:', event);
-        messages.value = messages.value.filter(m => m.id !== event.message_id);
+        // Suppression pour tout le monde : on remplace le message par une bulle spéciale
+        const idx = messages.value.findIndex(m => m.id === event.message_id);
+        if (idx !== -1) {
+          messages.value[idx] = {
+            ...messages.value[idx],
+            is_deleted_for_everyone: true,
+            content: null
+          };
+        }
       })
       // On retire la gestion du typing ici
       .listen('MessageReceivedEvent', (event: MessageReceivedEvent) => {
@@ -410,7 +419,20 @@ async function deleteMessage(messageId: number, forEveryone: boolean = false) {
       throw new Error(`Erreur API: ${errText}`);
     }
 
-    messages.value = messages.value.filter(m => m.id !== messageId);
+    if (forEveryone) {
+      // Suppression pour tout le monde : on marque le message comme supprimé localement
+      const idx = messages.value.findIndex(m => m.id === messageId);
+      if (idx !== -1) {
+        messages.value[idx] = {
+          ...messages.value[idx],
+          is_deleted_for_everyone: true,
+          content: null
+        };
+      }
+    } else {
+      // Suppression pour moi : on retire le message
+      messages.value = messages.value.filter(m => m.id !== messageId);
+    }
     showDeleteMenu.value = null;
   } catch (e) {
     console.error('❌ Erreur lors de la suppression du message :', e);
