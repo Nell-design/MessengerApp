@@ -99,15 +99,16 @@ class MessageService
     public function deleteMessage(Message $message, bool $forEveryone = false): string
     {
         if ($forEveryone) {
-            // Vérifie le délai (1h)
+            // Suppression globale : on marque is_deleted_for_everyone à true et content à null
             if ($message->isDeletableForEveryone()) {
                 $message->update([
                     'is_deleted_for_everyone' => true,
-                    'content' => null, // On peut aussi mettre 'Ce message a été supprimé' côté frontend
+                    'content' => null,
                 ]);
                 event(new MessageDeletedForEveryoneEvent(
                     $message->conversation_id,
-                    $message->id
+                    $message->id,
+                    auth()->id()
                 ));
                 // Mettre à jour la liste des conversations
                 $conversation = $message->conversation;
@@ -118,6 +119,7 @@ class MessageService
                 return 'too_late_for_everyone';
             }
         }
+        // Suppression pour moi : on marque deleted_for_sender ou deleted_for_receiver
         $result = $message->deleteForUser(auth()->id());
         event(new MessageDeletedEvent(
             $message->conversation_id,

@@ -69,6 +69,7 @@ interface Message {
   read_at?: string | null;
   sender_name?: string;
   is_deleted_for_everyone?: boolean;
+  is_deleted_for_me?: boolean; // Added for frontend sync
 }
 
 const messages = ref<Message[]>([]);
@@ -415,25 +416,30 @@ async function deleteMessage(messageId: number, forEveryone: boolean = false) {
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Erreur API: ${errText}`);
+      const error = await res.json();
+      if (forEveryone && res.status === 403) {
+        alert('Impossible de supprimer pour tout le monde : délai dépassé.');
+      }
+      throw new Error('Erreur API: ' + JSON.stringify(error));
     }
 
-    if (forEveryone) {
-      // Suppression pour tout le monde : on marque le message comme supprimé localement
-      const idx = messages.value.findIndex(m => m.id === messageId);
-      if (idx !== -1) {
+    // Mise à jour locale :
+    const idx = messages.value.findIndex(m => m.id === messageId);
+    if (idx !== -1) {
+      if (forEveryone) {
         messages.value[idx] = {
           ...messages.value[idx],
           is_deleted_for_everyone: true,
-          content: null
+          content: null,
+        };
+      } else {
+        messages.value[idx] = {
+          ...messages.value[idx],
+          is_deleted_for_me: true,
+          content: null,
         };
       }
-    } else {
-      // Suppression pour moi : on retire le message
-      messages.value = messages.value.filter(m => m.id !== messageId);
     }
-    showDeleteMenu.value = null;
   } catch (e) {
     console.error('❌ Erreur lors de la suppression du message :', e);
   }
@@ -588,6 +594,23 @@ function isDeletableForEveryone(message: Message): boolean {
   return !message.is_deleted_for_everyone && timeDiff < twentyFourHoursInMs;
 }
 
+// --- Synchro temps réel suppression globale via canal public ---
+onMounted(() => {
+  (window as any).Echo.channel('messages.deleted')
+    .listen('MessageDeletedForEveryoneEvent', (event) => {
+      if (event.conversation_id === props.conversation.id) {
+        const idx = messages.value.findIndex(m => m.id === event.message_id);
+        if (idx !== -1) {
+          messages.value[idx] = {
+            ...messages.value[idx],
+            is_deleted_for_everyone: true,
+            content: null,
+          };
+        }
+      }
+    });
+});
+
 </script>
 
 <template>
@@ -707,10 +730,10 @@ function isDeletableForEveryone(message: Message): boolean {
               msg.sender_id === currentUserId
                 ? 'bg-violet-600 text-white rounded-br-none hover:bg-violet-700'
                 : 'bg-gray-100 text-gray-800 rounded-bl-none border hover:bg-gray-200',
-              msg.is_deleted_for_everyone ? 'bg-gray-200 text-gray-500 italic border border-gray-300' : ''
+              (msg.is_deleted_for_everyone || msg.is_deleted_for_me) ? 'bg-gray-200 text-gray-500 italic border border-gray-300' : ''
             ]"
           >
-            <div v-if="msg.is_deleted_for_everyone">
+            <div v-if="msg.is_deleted_for_everyone || msg.is_deleted_for_me">
               <span class="italic text-gray-500">Ce message a été supprimé</span>
             </div>
             <div v-else>
@@ -722,9 +745,8 @@ function isDeletableForEveryone(message: Message): boolean {
                 ✓
               </span>
             </div>
-
             <!-- Menu de suppression pour l'expéditeur -->
-            <div v-if="msg.sender_id === currentUserId && !msg.is_deleted_for_everyone" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div v-if="msg.sender_id === currentUserId && !msg.is_deleted_for_everyone && !msg.is_deleted_for_me" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <button
                 @click.stop="toggleDeleteMenu(msg.id)"
                 class="text-xs bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800 rounded-full p-1.5 shadow-sm border border-gray-200"
@@ -735,7 +757,6 @@ function isDeletableForEveryone(message: Message): boolean {
                   <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                 </svg>
               </button>
-
               <!-- Menu déroulant -->
               <div v-if="showDeleteMenu === msg.id" class="delete-menu absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-40">
                 <button
