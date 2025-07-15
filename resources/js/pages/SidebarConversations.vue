@@ -486,7 +486,9 @@ function updateUnreadCount(conversationId: number, increment: boolean = true) {
 
 // Expose la méthode pour le parent (Dashboard.vue)
 defineExpose({
-  refreshConversations: fetchConversations
+  refreshConversations: fetchConversations,
+  moveConversationToTop,
+  updateLastMessage
 });
 
 </script>
