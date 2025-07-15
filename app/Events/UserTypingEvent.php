@@ -28,10 +28,9 @@ class UserTypingEvent implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        // Diffuse à la fois pour le receiver et le sender (pour faciliter les tests)
+        // Canal public séparé pour le typing
         return [
-            new PrivateChannel('conversationTyping.' . $this->conversationId . '.' . $this->receiverId . '.' . $this->isTyping),
-            new PrivateChannel('conversationTyping.' . $this->conversationId . '.' . $this->userId . '.' . $this->isTyping),
+            new Channel('typingPublic.' . $this->conversationId . '.' . $this->isTyping)
         ];
     }
 

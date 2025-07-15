@@ -611,6 +611,33 @@ onMounted(() => {
     });
 });
 
+onMounted(() => {
+  const conversationId = props.conversation?.id;
+  // On n'utilise plus currentUserId pour le canal public
+  if (conversationId) {
+    const typingChannel = `typingPublic.${conversationId}.true`;
+    console.log('[TYPING][ECHO] Echo listening on (public):', typingChannel);
+    (window as any).Echo.channel(typingChannel)
+      .listen('UserTypingEvent', (event: UserTypingEvent) => {
+        console.log('[TYPING][ECHO] UserTypingEvent reçu sur canal public:', typingChannel, 'event:', event);
+        // Affiche l'indicateur si ce n'est pas l'utilisateur courant
+        if (event.user_id !== props.currentUserId) {
+          remoteTyping.value = true;
+          typingUserId.value = event.user_id;
+          fetch(`/api/users/${event.user_id}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(user => { typingUserName.value = user ? user.name : null; });
+          if (typingTimeout.value) clearTimeout(typingTimeout.value);
+          typingTimeout.value = setTimeout(() => {
+            remoteTyping.value = false;
+            typingUserId.value = null;
+            typingUserName.value = null;
+          }, 2000);
+        }
+      });
+  }
+});
+
 </script>
 
 <template>
