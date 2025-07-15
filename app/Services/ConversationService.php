@@ -65,7 +65,7 @@ class ConversationService
                     'first_id' => $conv->first_id,
                     'second_id' => $conv->second_id,
                     'name' => $otherUser?->name ?? 'Utilisateur inconnu',
-                    'avatar' => $otherUser?->avatar ?? '/default-avatar.png',
+                    'avatar' => $otherUser?->avatar, // null si absent
                     'unread_count' => $unreadCount,
                     'last_message' => $lastMsg ? [
                         'content' => $lastMsg->content,

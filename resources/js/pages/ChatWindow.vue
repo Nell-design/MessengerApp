@@ -69,6 +69,7 @@ interface Message {
   read_at?: string | null;
   sender_name?: string;
   is_deleted_for_everyone?: boolean;
+  is_deleted_for_me?: boolean; // Added for frontend sync
 }
 
 const messages = ref<Message[]>([]);
@@ -83,8 +84,7 @@ const showDeleteMenu = ref<number | null>(null); // ✅ ou
 const remoteTyping = ref(false);
 const typingUserId = ref<number | null>(null);
 
-// Correction du type de typingUserName
-const typingUserName = ref<string | null>(null);
+const typingUserName = ref(null);
 const showEmojiPicker = ref(false);
 
 function addEmoji(emoji: any) {
@@ -156,31 +156,6 @@ watch(
   },
   { immediate: true }
 );
-
-watch(newMessage, async () => {
-  console.log('newMessage', newMessage.value);
-  handleTyping();
-  await notifTyping();
-});
-
-async function notifTyping() {
-  console.log('notifTyping');
-  const csrfToken = getCsrfToken();
-  if (!csrfToken) {
-    console.warn('❌ CSRF token introuvable');
-    return;
-  }
-  await fetch('/messages/typing', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-TOKEN': csrfToken,
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ conversation_id: props.conversation.id, is_typing: true }),
-  });
-} 
 
 watch(messages, async () => {
   await nextTick();
@@ -258,7 +233,7 @@ onMounted(() => {
           messages.value[idx] = {
             ...messages.value[idx],
             is_deleted_for_everyone: true,
-            content: ''
+            content: null
           };
         }
       })
@@ -273,48 +248,74 @@ onMounted(() => {
             read_at: new Date().toISOString()
           };
         }
-      })
-       // On retire la gestion du typing ici
-       .listen('UserTypingEvent', (event: UserTypingEvent) => {
-        console.log('✅ UserTypingEvent reçu sur conversation:', event);
-        // Met à jour le statut de lecture du message dans la liste
-        
       });
 
     console.log('✅ ChatWindow: Listeners de conversation configurés pour:', conversationId);
   }
- 
-});
 
-onMounted(() => {
-  const conversationId = props.conversation?.id;
-  const currentUserId = props.currentUserId;
+  // Écouter sur le canal utilisateur pour le typing (et messages reçus hors conversation active)
+  console.log('📡 Initialisation du listener utilisateur pour:', currentUserId);
+  console.log('[ECHO] Tentative abonnement canal user', currentUserId);
+  (window as any).Echo.private(`user.${currentUserId}`)
+    // Gestion du typing en temps réel uniquement pour le destinataire
+    .listen('UserTypingEvent', (event: UserTypingEvent) => {
+      console.log('[ECHO] UserTypingEvent reçu', event);
+      // Affiche l'indicateur uniquement chez le destinataire
+      remoteTyping.value = !!event.is_typing;
+      typingUserId.value = event.is_typing ? event.user_id : null;
+      if (event.is_typing) {
+        if (typingTimeout.value) clearTimeout(typingTimeout.value);
+        typingTimeout.value = window.setTimeout(() => {
+          remoteTyping.value = false;
+          typingUserId.value = null;
+        }, 3000);
+      }
+    })
+    .listen('MessageSentEvent', (event: MessageSentEvent) => {
+      console.log('📨 MessageSentEvent reçu sur canal utilisateur:', event);
 
-  if (conversationId && currentUserId) {
-    const typingChannel = `conversationTyping.${conversationId}.${currentUserId}.true`;
-    console.log('[TYPING][ECHO] Echo listening on:', typingChannel, 'currentUserId:', currentUserId);
-    (window as any).Echo.private(typingChannel)
-      .listen('UserTypingEvent', (event: UserTypingEvent) => {
-        console.log('[TYPING][ECHO] UserTypingEvent reçu sur canal:', typingChannel, 'event:', event, 'currentUserId:', currentUserId);
-        // N'affiche l'indicateur que si c'est l'autre utilisateur qui tape
-        if (event.user_id !== currentUserId) {
-          remoteTyping.value = true;
-          typingUserId.value = event.user_id;
-          // Récupère le nom de l'autre utilisateur
-          fetch(`/api/users/${event.user_id}`)
-            .then(res => res.ok ? res.json() : null)
-            .then(user => { typingUserName.value = user ? user.name : null; });
-          if (typingTimeout.value) clearTimeout(typingTimeout.value);
-          typingTimeout.value = setTimeout(() => {
-            remoteTyping.value = false;
-            typingUserId.value = null;
-            typingUserName.value = null;
-          }, 2000);
+      // Si le message est pour la conversation actuellement ouverte
+      if (event.message && event.message.conversation_id === conversationId) {
+        // Évite les doublons si le message existe déjà
+        const messageExists = messages.value.some(m => m.id === event.message.id);
+        console.log('🔍 ChatWindow: Message existe déjà dans la conversation active?', messageExists);
+
+        if (!messageExists) {
+          console.log('✅ Ajout du message reçu à la conversation active:', event.message.id);
+          messages.value.push(event.message);
+
+          // Faire défiler vers le bas pour voir le nouveau message
+          nextTick(() => {
+            if (chatContainer.value) {
+              chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+            }
+          });
+          // Ajout : marquer la conversation comme lue dès qu'un message est reçu dans la conversation ouverte
+          markConversationAsRead(conversationId);
+        } else {
+          console.log('⚠️ ChatWindow: Message déjà présent dans la conversation active, ignoré:', event.message.id);
         }
-      });
+      } else if (event.message) {
+        // Si c'est un message pour une autre conversation, on peut déclencher une notification
+        console.log('📱 Message reçu pour une autre conversation:', event.message.conversation_id);
+        // Ici on pourrait déclencher une notification ou mettre à jour la sidebar
+      }
+    })
+    .listen('conversation.updated', (event: any) => {
+      console.log('🔄 Conversation mise à jour reçue dans ChatWindow:', event);
+      // Si la conversation mise à jour est celle actuellement ouverte
+      if (event.conversation && event.conversation.id === conversationId) {
+        console.log('✅ Mise à jour de la conversation active reçue');
+        // On pourrait ici mettre à jour les informations de la conversation si nécessaire
+      }
+    });
+
+  document.addEventListener('click', handleClickOutside);
+
+  if (chatContainer.value) {
+    chatContainer.value.addEventListener('scroll', handleScroll);
   }
 });
-
 
 onUnmounted(() => {
   if (props.conversation?.id) {
@@ -340,7 +341,11 @@ function handleClickOutside(e: Event) {
 
 // Utilitaire pour récupérer le token CSRF de façon fiable
 function getCsrfToken() {
-  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  if (!token) {
+    console.error('❌ CSRF token introuvable. Vérifie que la balise <meta name="csrf-token"> est bien présente dans le HTML.');
+  }
+  return token;
 }
 
 async function sendMessage() {
@@ -411,25 +416,30 @@ async function deleteMessage(messageId: number, forEveryone: boolean = false) {
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Erreur API: ${errText}`);
+      const error = await res.json();
+      if (forEveryone && res.status === 403) {
+        alert('Impossible de supprimer pour tout le monde : délai dépassé.');
+      }
+      throw new Error('Erreur API: ' + JSON.stringify(error));
     }
 
-    if (forEveryone) {
-      // Suppression pour tout le monde : on marque le message comme supprimé localement
-      const idx = messages.value.findIndex(m => m.id === messageId);
-      if (idx !== -1) {
+    // Mise à jour locale :
+    const idx = messages.value.findIndex(m => m.id === messageId);
+    if (idx !== -1) {
+      if (forEveryone) {
         messages.value[idx] = {
           ...messages.value[idx],
           is_deleted_for_everyone: true,
-          content: ''
+          content: null,
+        };
+      } else {
+        messages.value[idx] = {
+          ...messages.value[idx],
+          is_deleted_for_me: true,
+          content: null,
         };
       }
-    } else {
-      // Suppression pour moi : on retire le message
-      messages.value = messages.value.filter(m => m.id !== messageId);
     }
-    showDeleteMenu.value = null;
   } catch (e) {
     console.error('❌ Erreur lors de la suppression du message :', e);
   }
@@ -444,23 +454,6 @@ async function sendTypingStatus(isTypingStatus: boolean) {
     const csrfToken = getCsrfToken();
     if (!csrfToken) return;
 
-    const currentUserId = props.currentUserId;
-    const conversation = props.conversation;
-    let receiverId = undefined;
-    if (conversation.first_id && conversation.second_id) {
-      receiverId = (Number(conversation.first_id) === Number(currentUserId))
-        ? Number(conversation.second_id)
-        : Number(conversation.first_id);
-    }
-
-    const payload: any = {
-      conversation_id: conversation.id,
-      is_typing: isTypingStatus,
-      user_id: currentUserId,
-      receiver_id: receiverId
-    };
-    console.log('[TYPING][SEND] sendTypingStatus payload', payload);
-
     await fetch('/messages/typing', {
       method: 'POST',
       credentials: 'same-origin',
@@ -469,7 +462,10 @@ async function sendTypingStatus(isTypingStatus: boolean) {
         'X-CSRF-TOKEN': csrfToken,
         Accept: 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        conversation_id: props.conversation.id,
+        is_typing: isTypingStatus,
+      }),
     });
   } catch (error) {
     // Silencieux
@@ -482,7 +478,6 @@ let typingDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 function handleTyping() {
   // Toujours envoyer le statut "en train d'écrire" à chaque frappe, mais pas plus d'une fois toutes les 1s
   if (typingDebounceTimeout) clearTimeout(typingDebounceTimeout);
-  console.log('handleTyping');
 
   if (!isTyping.value) {
     isTyping.value = true;
@@ -599,12 +594,22 @@ function isDeletableForEveryone(message: Message): boolean {
   return !message.is_deleted_for_everyone && timeDiff < twentyFourHoursInMs;
 }
 
-// Ajout d'un watch pour loguer les valeurs à chaque changement
-watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
-  console.log('[DEBUG TYPING] remoteTyping:', rt, 'typingUserId:', tuid, 'typingUserName:', tun, 'currentUserId:', props.currentUserId);
+// --- Synchro temps réel suppression globale via canal public ---
+onMounted(() => {
+  (window as any).Echo.channel('messages.deleted')
+    .listen('MessageDeletedForEveryoneEvent', (event) => {
+      if (event.conversation_id === props.conversation.id) {
+        const idx = messages.value.findIndex(m => m.id === event.message_id);
+        if (idx !== -1) {
+          messages.value[idx] = {
+            ...messages.value[idx],
+            is_deleted_for_everyone: true,
+            content: null,
+          };
+        }
+      }
+    });
 });
-
-// SUPPRIMER le watch sur isTyping qui force l'affichage local
 
 </script>
 
@@ -652,11 +657,13 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
             <div class="font-semibold">{{ conversation.name }}</div>
             <div class="text-xs text-gray-400">
               <span>
-                <span v-if="remoteTyping && typingUserName">
-                  {{ typingUserName }} est en train d'écrire...
-                </span>
+                <!--
+                  Affiche 'est en train d'écrire...' uniquement si c'est un autre utilisateur qui tape.
+                  Si c'est l'utilisateur courant qui tape, on garde 'En ligne'.
+                -->
+                <span v-if="!remoteTyping || typingUserId === currentUserId">En ligne</span>
                 <span v-else>
-                  En ligne
+                  {{ typingUserName }} est en train d'écrire...
                 </span>
               </span>
             </div>
@@ -693,7 +700,6 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
 
       <!-- Zone des messages -->
       <div ref="chatContainer" class="flex-1 px-8 py-6 overflow-y-auto flex flex-col gap-2">
-        <div v-if="remoteTyping && typingUserName" class="text-xs text-gray-500 italic mb-2">{{ typingUserName }} est en train d'écrire...</div>
         <div class="flex flex-col items-center">
           <span class="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full mb-2">Aujourd'hui</span>
         </div>
@@ -710,7 +716,7 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
           <template v-if="msg.sender_id !== currentUserId">
             <template v-if="!msg.sender_avatar || msg.sender_avatar === '/default-avatar.png'">
               <div class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
-                {{ (msg.sender_name && msg.sender_name.trim()) ? msg.sender_name.substring(0, 2).toUpperCase() : '??' }}
+                {{ ((msg.sender_name && msg.sender_name.trim()) ? msg.sender_name : (msg.sender?.name || '??')).substring(0, 2).toUpperCase() }}
               </div>
             </template>
             <template v-else>
@@ -724,10 +730,10 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
               msg.sender_id === currentUserId
                 ? 'bg-violet-600 text-white rounded-br-none hover:bg-violet-700'
                 : 'bg-gray-100 text-gray-800 rounded-bl-none border hover:bg-gray-200',
-              msg.is_deleted_for_everyone ? 'bg-gray-200 text-gray-500 italic border border-gray-300' : ''
+              (msg.is_deleted_for_everyone || msg.is_deleted_for_me) ? 'bg-gray-200 text-gray-500 italic border border-gray-300' : ''
             ]"
           >
-            <div v-if="msg.is_deleted_for_everyone">
+            <div v-if="msg.is_deleted_for_everyone || msg.is_deleted_for_me">
               <span class="italic text-gray-500">Ce message a été supprimé</span>
             </div>
             <div v-else>
@@ -739,9 +745,8 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
                 ✓
               </span>
             </div>
-
             <!-- Menu de suppression pour l'expéditeur -->
-            <div v-if="msg.sender_id === currentUserId && !msg.is_deleted_for_everyone" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div v-if="msg.sender_id === currentUserId && !msg.is_deleted_for_everyone && !msg.is_deleted_for_me" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <button
                 @click.stop="toggleDeleteMenu(msg.id)"
                 class="text-xs bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800 rounded-full p-1.5 shadow-sm border border-gray-200"
@@ -752,7 +757,6 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
                   <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                 </svg>
               </button>
-
               <!-- Menu déroulant -->
               <div v-if="showDeleteMenu === msg.id" class="delete-menu absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-40">
                 <button
@@ -793,7 +797,7 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
           type="button"
           @click="showEmojiPicker = !showEmojiPicker"
         >
-          😊
+          <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"><path fill="currentColor" d="M14.36 14.23a3.76 3.76 0 0 1-4.72 0a1 1 0 0 0-1.28 1.54a5.68 5.68 0 0 0 7.28 0a1 1 0 1 0-1.28-1.54M9 11a1 1 0 1 0-1-1a1 1 0 0 0 1 1m6-2a1 1 0 1 0 1 1a1 1 0 0 0-1-1m-3-7a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 18a8 8 0 1 1 8-8a8 8 0 0 1-8 8"/></svg>
         </button>
         <input
           type="text"
@@ -804,7 +808,6 @@ watch([remoteTyping, typingUserId, typingUserName], ([rt, tuid, tun]) => {
           @input="handleTyping"
           :disabled="sending"
           autocomplete="off"
-          
         />
         <button
           @click="sendMessage"

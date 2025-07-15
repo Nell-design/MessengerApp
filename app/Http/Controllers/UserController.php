@@ -21,6 +21,7 @@ public function listAll()
 
     \Log::info('Utilisateurs récupérés :', $users->toArray());
 
+    // Ne pas mettre de fallback, juste renvoyer l'avatar tel quel (null si absent)
     return response()->json($users);
 }
 
@@ -56,7 +57,7 @@ public function listAll()
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
-            'avatar' => $user->avatar,
+            'avatar' => $user->avatar, // null si absent
         ]);
     }
 }

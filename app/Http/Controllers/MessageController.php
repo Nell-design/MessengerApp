@@ -26,23 +26,25 @@ class MessageController extends Controller
      */
     public function index(Conversation $conversation)
     {
-        // Charge les messages avec les relations sender et receiver
-        $conversation->load('messages.sender', 'messages.receiver');
-
-        // Formater chaque message pour inclure les avatars
-        $messages = $conversation->messages->map(function ($msg) {
-            return [
-                'id' => $msg->id,
-                'content' => $msg->is_deleted_for_everyone ? null : $msg->content,
-                'sender_id' => $msg->sender_id,
-                'receiver_id' => $msg->receiver_id,
-                'created_at' => $msg->created_at,
-                'sender_avatar' => $msg->sender?->avatar ?? '/default-avatar.png',
-                'receiver_avatar' => $msg->receiver?->avatar ?? '/default-avatar.png',
-                'sender_name' => $msg->sender?->name ?? '',
-                'is_deleted_for_everyone' => $msg->is_deleted_for_everyone,
-            ];
-        });
+        $userId = auth()->id();
+        // Filtrer les messages visibles pour l'utilisateur courant
+        $messages = Message::where('conversation_id', $conversation->id)
+            ->visibleToUser($userId)
+            ->orderBy('created_at')
+            ->get()
+            ->map(function ($msg) {
+                return [
+                    'id' => $msg->id,
+                    'content' => $msg->is_deleted_for_everyone ? null : $msg->content,
+                    'sender_id' => $msg->sender_id,
+                    'receiver_id' => $msg->receiver_id,
+                    'created_at' => $msg->created_at,
+                    'sender_avatar' => $msg->sender?->avatar ?? '/default-avatar.png',
+                    'receiver_avatar' => $msg->receiver?->avatar ?? '/default-avatar.png',
+                    'sender_name' => $msg->sender?->name ?? '',
+                    'is_deleted_for_everyone' => $msg->is_deleted_for_everyone,
+                ];
+            });
 
         return response()->json([
             'messages' => $messages,
