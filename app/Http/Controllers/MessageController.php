@@ -33,13 +33,14 @@ class MessageController extends Controller
         $messages = $conversation->messages->map(function ($msg) {
             return [
                 'id' => $msg->id,
-                'content' => $msg->content,
+                'content' => $msg->is_deleted_for_everyone ? null : $msg->content,
                 'sender_id' => $msg->sender_id,
                 'receiver_id' => $msg->receiver_id,
                 'created_at' => $msg->created_at,
                 'sender_avatar' => $msg->sender?->avatar ?? '/default-avatar.png',
                 'receiver_avatar' => $msg->receiver?->avatar ?? '/default-avatar.png',
                 'sender_name' => $msg->sender?->name ?? '',
+                'is_deleted_for_everyone' => $msg->is_deleted_for_everyone,
             ];
         });
 
@@ -124,7 +125,17 @@ public function store(StoreMessageRequest $request)
             $forEveryone
         );
 
-        broadcast(new MessageDeletedEvent($message))->toOthers();
+        if ($result === 'too_late_for_everyone') {
+            return response()->json([
+                'error' => 'Le délai pour supprimer ce message pour tout le monde est dépassé.'
+            ], 403);
+        }
+
+        broadcast(new MessageDeletedEvent(
+            $message->conversation_id,
+            $message->id,
+            auth()->id()
+        ))->toOthers();
 
         return response()->json([
             'status' => $result === 'permanent' ? 'permanently_deleted' : 'soft_deleted'

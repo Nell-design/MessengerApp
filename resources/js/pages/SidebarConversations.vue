@@ -94,6 +94,7 @@ async function addConversation(user: User) {
 
         const res = await fetch('/conversations/start', {
             method: 'POST',
+            credentials: 'same-origin', // <-- Ajouté
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
@@ -195,21 +196,29 @@ function handleResize() {
 
 // Gestionnaire pour les nouveaux messages reçus
 function handleNewMessage(data: { conversationId: number; message: any }) {
-    console.log('🔔 Nouveau message reçu dans la sidebar:', data);
-
-    // Mettre à jour le dernier message de la conversation
+    // Si la conversation est ouverte, ne pas incrémenter le compteur
+    if (props.selectedConversationId && data.conversationId === props.selectedConversationId) {
+        updateLastMessage(data.conversationId, data.message);
+        updateUnreadCount(data.conversationId, false); // Remet à zéro
+        moveConversationToTop(data.conversationId);
+        return;
+    }
+    // Sinon, comportement normal
     updateLastMessage(data.conversationId, data.message);
-
-    // Incrémenter le compteur de messages non lus
     updateUnreadCount(data.conversationId, true);
-
-    // Déplacer la conversation en haut de la liste
     moveConversationToTop(data.conversationId);
 }
 
 // Gestionnaire pour l'incrémentation du compteur
 function handleIncrementUnread(data: { conversationId: number; message: any }) {
-    console.log('📈 Incrémentation du compteur pour la conversation:', data.conversationId);
+    // Si la conversation est ouverte, ne pas incrémenter le compteur
+    if (props.selectedConversationId && data.conversationId === props.selectedConversationId) {
+        updateLastMessage(data.conversationId, data.message);
+        updateUnreadCount(data.conversationId, false); // Remet à zéro
+        moveConversationToTop(data.conversationId);
+        return;
+    }
+    // Sinon, comportement normal
     updateUnreadCount(data.conversationId, true);
     updateLastMessage(data.conversationId, data.message);
     moveConversationToTop(data.conversationId);
@@ -489,7 +498,7 @@ defineExpose({
         $attrs.class
     ]" :style="isMobile ? { left: 0, top: 0 } : {}">
         <!-- Gestionnaire de notifications (invisible) -->
-        <NotificationManager ref="notificationManager" :current-user-id="currentUserId"
+        <NotificationManager ref="notificationManager" :current-user-id="currentUserId" :open-conversation-id="selectedConversationId"
             @increment-unread="handleIncrementUnread" @new-message="handleNewMessage" />
 
         <div class="flex items-center gap-3 px-6 py-4 border-b">

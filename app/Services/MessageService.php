@@ -99,32 +99,35 @@ class MessageService
     public function deleteMessage(Message $message, bool $forEveryone = false): string
     {
         if ($forEveryone) {
-            $message->delete();
-            event(new MessageDeletedForEveryoneEvent(
-                $message->conversation_id,
-                $message->id
-            ));
-
-            // Mettre à jour la liste des conversations
-            $conversation = $message->conversation;
-            event(new ConversationListUpdatedEvent($conversation->first_id, $conversation, 'updated'));
-            event(new ConversationListUpdatedEvent($conversation->second_id, $conversation, 'updated'));
-
-            return 'deleted_for_everyone';
+            // Vérifie le délai (1h)
+            if ($message->isDeletableForEveryone()) {
+                $message->update([
+                    'is_deleted_for_everyone' => true,
+                    'content' => null, // On peut aussi mettre 'Ce message a été supprimé' côté frontend
+                ]);
+                event(new MessageDeletedForEveryoneEvent(
+                    $message->conversation_id,
+                    $message->id
+                ));
+                // Mettre à jour la liste des conversations
+                $conversation = $message->conversation;
+                event(new ConversationListUpdatedEvent($conversation->first_id, $conversation, 'updated'));
+                event(new ConversationListUpdatedEvent($conversation->second_id, $conversation, 'updated'));
+                return 'deleted_for_everyone';
+            } else {
+                return 'too_late_for_everyone';
+            }
         }
-
         $result = $message->deleteForUser(auth()->id());
         event(new MessageDeletedEvent(
             $message->conversation_id,
             $message->id,
             auth()->id()
         ));
-
         // Mettre à jour la liste des conversations
         $conversation = $message->conversation;
         event(new ConversationListUpdatedEvent($conversation->first_id, $conversation, 'updated'));
         event(new ConversationListUpdatedEvent($conversation->second_id, $conversation, 'updated'));
-
         return $result;
     }
 
