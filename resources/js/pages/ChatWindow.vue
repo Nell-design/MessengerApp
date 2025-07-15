@@ -745,7 +745,7 @@ onMounted(() => {
           <template v-if="msg.sender_id !== currentUserId">
             <template v-if="!msg.sender_avatar || msg.sender_avatar === '/default-avatar.png'">
               <div class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
-                {{ ((msg.sender_name && msg.sender_name.trim()) ? msg.sender_name : '??').substring(0, 2).toUpperCase() }}
+                {{ ((msg.sender_name && msg.sender_name.trim()) ? msg.sender_name : (msg.sender && msg.sender.name ? msg.sender.name : '??')).substring(0, 2).toUpperCase() }}
               </div>
             </template>
             <template v-else>
