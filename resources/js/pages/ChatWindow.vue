@@ -233,7 +233,7 @@ onMounted(() => {
           messages.value[idx] = {
             ...messages.value[idx],
             is_deleted_for_everyone: true,
-            content: null
+            content: ''
           };
         }
       })
@@ -430,13 +430,13 @@ async function deleteMessage(messageId: number, forEveryone: boolean = false) {
         messages.value[idx] = {
           ...messages.value[idx],
           is_deleted_for_everyone: true,
-          content: null,
+          content: '',
         };
       } else {
         messages.value[idx] = {
           ...messages.value[idx],
           is_deleted_for_me: true,
-          content: null,
+          content: '',
         };
       }
     }
@@ -597,14 +597,14 @@ function isDeletableForEveryone(message: Message): boolean {
 // --- Synchro temps réel suppression globale via canal public ---
 onMounted(() => {
   (window as any).Echo.channel('messages.deleted')
-    .listen('MessageDeletedForEveryoneEvent', (event) => {
+    .listen('MessageDeletedForEveryoneEvent', (event: { conversation_id: number; message_id: number }) => {
       if (event.conversation_id === props.conversation.id) {
-        const idx = messages.value.findIndex(m => m.id === event.message_id);
+        const idx = messages.value.findIndex((m: Message) => m.id === event.message_id);
         if (idx !== -1) {
           messages.value[idx] = {
             ...messages.value[idx],
             is_deleted_for_everyone: true,
-            content: null,
+            content: '',
           };
         }
       }
@@ -716,7 +716,7 @@ onMounted(() => {
           <template v-if="msg.sender_id !== currentUserId">
             <template v-if="!msg.sender_avatar || msg.sender_avatar === '/default-avatar.png'">
               <div class="w-8 h-8 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-base mb-1">
-                {{ ((msg.sender_name && msg.sender_name.trim()) ? msg.sender_name : (msg.sender?.name || '??')).substring(0, 2).toUpperCase() }}
+                {{ ((msg.sender_name && msg.sender_name.trim()) ? msg.sender_name : '??').substring(0, 2).toUpperCase() }}
               </div>
             </template>
             <template v-else>
