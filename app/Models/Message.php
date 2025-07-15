@@ -79,7 +79,7 @@ public function user()
 {
     return $this->belongsTo(User::class, 'sender_id');
 }
-    
+
 
     public function deleteForUser($userId)
     {
@@ -102,10 +102,10 @@ public function user()
         return 'soft';
     }
 
-    // Vérifie si le message peut être supprimé pour tout le monde (délai de 1h)
+    // Vérifie si le message peut être supprimé pour tout le monde (délai de 72h)
     public function isDeletableForEveryone(): bool
     {
-        $maxDelay = 60 * 60; // 1h en secondes
+        $maxDelay = 72 * 60 * 60; // 72h en secondes
         return (time() - strtotime($this->created_at)) <= $maxDelay;
     }
 }
