@@ -22,6 +22,10 @@ const props = defineProps({
     type: Number,
     required: true,
   },
+  openConversationId: {
+    type: Number,
+    required: false,
+  },
 });
 
 const emit = defineEmits(['increment-unread', 'new-message']);
@@ -85,16 +89,19 @@ function setupEchoListeners() {
   // Écouter les messages envoyés sur le canal utilisateur
   (window as any).Echo.channel(`user.${props.currentUserId}`)
     .listen('MessageSentEvent', (event: MessageSentEvent) => {
-      console.log('🔔 Nouveau message reçu (notification) sur user.' + props.currentUserId + ':', event);
-      
-      // Afficher la notification push
+      // Afficher la notification push toujours
       showPushNotification(event);
-      
-      // Incrémenter le compteur de messages non lus
-      emit('increment-unread', {
-        conversationId: event.conversation_id,
-        message: event.message
-      });
+
+      // Incrémenter le compteur seulement si la conversation n'est pas ouverte
+      if (!(props.openConversationId && event.conversation_id === props.openConversationId)) {
+        emit('increment-unread', {
+          conversationId: event.conversation_id,
+          message: event.message
+        });
+      } else {
+        // Optionnel : marquer comme lu côté serveur
+        markConversationAsRead(event.conversation_id);
+      }
     })
     .listen('conversation.updated', (event: any) => {
       console.log('🔄 Conversation mise à jour reçue sur user.' + props.currentUserId + ':', event);

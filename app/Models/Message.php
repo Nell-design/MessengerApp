@@ -13,13 +13,15 @@ class Message extends Model
     'receiver_id',
     'is_read',
     'deleted_for_sender',
-    'deleted_for_receiver'
+    'deleted_for_receiver',
+    'is_deleted_for_everyone', // Ajouté
 ];
 
 protected $casts = [
     'is_read' => 'boolean',
     'deleted_for_sender' => 'boolean',
-    'deleted_for_receiver' => 'boolean'
+    'deleted_for_receiver' => 'boolean',
+    'is_deleted_for_everyone' => 'boolean', // Ajouté
 ];
 
     /**
@@ -81,18 +83,29 @@ public function user()
 
     public function deleteForUser($userId)
     {
+        // Si le message a été supprimé pour tout le monde, on ne fait rien
+        if ($this->is_deleted_for_everyone) {
+            return 'already_deleted_for_everyone';
+        }
         if ($this->sender_id === $userId) {
             $this->update(['deleted_for_sender' => true]);
         } else {
             $this->update(['deleted_for_receiver' => true]);
         }
 
-        // Suppression réelle si les deux ont supprimé
-        if ($this->deleted_for_sender && $this->deleted_for_receiver) {
+        // Suppression réelle si les deux ont supprimé et pas supprimé pour tout le monde
+        if ($this->deleted_for_sender && $this->deleted_for_receiver && !$this->is_deleted_for_everyone) {
             $this->delete();
             return 'permanent';
         }
 
         return 'soft';
+    }
+
+    // Vérifie si le message peut être supprimé pour tout le monde (délai de 1h)
+    public function isDeletableForEveryone(): bool
+    {
+        $maxDelay = 60 * 60; // 1h en secondes
+        return (time() - strtotime($this->created_at)) <= $maxDelay;
     }
 }

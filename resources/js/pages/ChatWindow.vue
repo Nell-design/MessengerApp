@@ -59,6 +59,7 @@ interface Message {
   receiver_avatar?: string;
   read_at?: string | null;
   sender_name?: string;
+  is_deleted_for_everyone?: boolean;
 }
 
 const messages = ref<Message[]>([]);
@@ -311,8 +312,14 @@ function handleClickOutside(e: Event) {
   }
 }
 
-
-
+// Utilitaire pour récupérer le token CSRF de façon fiable
+function getCsrfToken() {
+  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  if (!token) {
+    console.error('❌ CSRF token introuvable. Vérifie que la balise <meta name="csrf-token"> est bien présente dans le HTML.');
+  }
+  return token;
+}
 
 async function sendMessage() {
 
@@ -327,7 +334,7 @@ async function sendMessage() {
   try {
     sending.value = true;
 
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const csrfToken = getCsrfToken();
     if (!csrfToken) throw new Error('CSRF token introuvable');
 
     const res = await fetch('/messages', {
@@ -365,7 +372,7 @@ async function sendMessage() {
 
 async function deleteMessage(messageId: number, forEveryone: boolean = false) {
   try {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const csrfToken = getCsrfToken();
     if (!csrfToken) throw new Error('CSRF token introuvable');
 
     const url = forEveryone
@@ -399,7 +406,7 @@ function toggleDeleteMenu(messageId: number) {
 
 async function sendTypingStatus(isTypingStatus: boolean) {
   try {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const csrfToken = getCsrfToken();
     if (!csrfToken) return;
 
     await fetch('/messages/typing', {
@@ -456,7 +463,7 @@ async function markConversationAsRead(conversationId: number) {
   try {
     console.log('📖 Marquage de tous les messages de la conversation', conversationId, 'comme lus');
 
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const csrfToken = getCsrfToken();
     if (!csrfToken) {
       console.warn('❌ CSRF token introuvable');
       return;
@@ -518,6 +525,23 @@ function goBack() {
   if (props.onOpenSidebar) {
     props.onOpenSidebar();
   }
+}
+
+function isDeletableForEveryone(message: Message): boolean {
+  // Un message est supprimable pour tout le monde si :
+  // 1. Il n'a pas été lu (read_at est null)
+  // 2. Il n'a pas été supprimé pour tout le monde (is_deleted_for_everyone est true)
+  // 3. Le délai de suppression pour tout le monde n'a pas encore été dépassé
+  // Pour simplifier, on peut considérer que si le message est supprimé pour tout le monde, il ne l'est plus.
+  // On vérifie donc si le message n'est pas supprimé pour tout le monde ET si le délai n'a pas encore été dépassé.
+  // Pour le délai, on peut utiliser un timestamp de création ou un délai fixe.
+  // Pour l'instant, on va utiliser un délai fixe de 24 heures.
+  const messageCreatedAt = new Date(message.created_at).getTime();
+  const now = new Date().getTime();
+  const timeDiff = now - messageCreatedAt;
+  const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+
+  return !message.is_deleted_for_everyone && timeDiff < twentyFourHoursInMs;
 }
 
 </script>
@@ -635,10 +659,16 @@ function goBack() {
               'max-w-xs px-4 py-2 rounded-2xl mb-1 shadow transition-colors relative group',
               msg.sender_id === currentUserId
                 ? 'bg-violet-600 text-white rounded-br-none hover:bg-violet-700'
-                : 'bg-gray-100 text-gray-800 rounded-bl-none border hover:bg-gray-200'
+                : 'bg-gray-100 text-gray-800 rounded-bl-none border hover:bg-gray-200',
+              msg.is_deleted_for_everyone ? 'bg-gray-200 text-gray-500 italic border border-gray-300' : ''
             ]"
           >
-            <div>{{ msg.content }}</div>
+            <div v-if="msg.is_deleted_for_everyone">
+              <span class="italic text-gray-500">Ce message a été supprimé</span>
+            </div>
+            <div v-else>
+              {{ msg.content }}
+            </div>
             <div class="text-xs text-gray-400 mt-1 text-right">
               {{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
               <span v-if="msg.sender_id === currentUserId && msg.read_at" class="ml-1 text-violet-500" title="Lu">
@@ -647,7 +677,7 @@ function goBack() {
             </div>
 
             <!-- Menu de suppression pour l'expéditeur -->
-            <div v-if="msg.sender_id === currentUserId" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div v-if="msg.sender_id === currentUserId && !msg.is_deleted_for_everyone" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <button
                 @click.stop="toggleDeleteMenu(msg.id)"
                 class="text-xs bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800 rounded-full p-1.5 shadow-sm border border-gray-200"
@@ -673,6 +703,8 @@ function goBack() {
                 <button
                   @click.stop="deleteMessage(msg.id, true)"
                   class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  :disabled="!isDeletableForEveryone(msg)"
+                  :class="{'opacity-50 cursor-not-allowed': !isDeletableForEveryone(msg)}"
                 >
                   <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
