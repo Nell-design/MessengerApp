@@ -49,7 +49,7 @@ Route::get('/test-no-message', function () {
 });
 
 // API pour récupérer le nom d'un utilisateur (utilisé pour l'indicateur de frappe)
-Route::get('/api/users/{id}', [\App\Http\Controllers\UserController::class, 'show'])->middleware('auth');
+Route::get('/api/users/{id}', [UserController::class, 'show'])->middleware('auth');
 
 // Page de messagerie après connexion
 Route::middleware(['auth', 'verified'])->group(function () {

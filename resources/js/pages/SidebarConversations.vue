@@ -522,8 +522,11 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
                     ]" @click="goToConversation(conv.id)">
                     <!-- Avatar -->
                     <div class="relative mr-3 flex-shrink-0">
-                        <img :src="conv.avatar || '/default-avatar.png'"
-                            class="h-10 w-10 rounded-full object-cover border-2"
+                        <div v-if="!conv.avatar" class="h-10 w-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover border-2"
+                            :class="conv.id === props.selectedConversationId ? 'border-violet-600' : 'border-gray-200'">
+                            {{ getInitials(conv.name) }}
+                        </div>
+                        <img v-else :src="conv.avatar" class="h-10 w-10 rounded-full object-cover border-2"
                             :class="conv.id === props.selectedConversationId ? 'border-violet-600' : 'border-gray-200'" />
                     </div>
 
@@ -593,7 +596,10 @@ defineExpose({ moveConversationToTop, updateLastMessage, updateUnreadCount });
                     <li v-for="user in allUsers" :key="user.id"
                         class="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 cursor-pointer"
                         @click="addConversation(user)">
-                        <img :src="user.avatar || '/default-avatar.png'" class="h-10 w-10 rounded-full object-cover" />
+                        <div v-if="!user.avatar" class="h-10 w-10 rounded-full flex items-center justify-center bg-blue-600 text-white font-bold text-lg object-cover">
+                            {{ getInitials(user.name) }}
+                        </div>
+                        <img v-else :src="user.avatar" class="h-10 w-10 rounded-full object-cover" />
                         <span>{{ user.name }}</span>
                     </li>
                 </ul>
