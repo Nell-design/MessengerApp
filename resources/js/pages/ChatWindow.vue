@@ -198,7 +198,7 @@ onMounted(() => {
     // Écouter sur le canal conversation (messages, suppression, etc.)
     (window as any).Echo.channel(`conversation`)
       .listen('MessageSentEvent', (event: any) => {
-        if (currentUserId === event.receiver_id) {
+        if (currentUserId === event.receiver_id || currentUserId === event.message.sender_id) {
           console.log("📨 Message reçu pour l'utilisateur actuel sur canal conversation dans ChatWindow");
 
           // Si le message est pour la conversation actuellement ouverte
@@ -398,10 +398,7 @@ async function sendMessage() {
     }
 
     const savedMessage = await res.json();
-    // Évite les doublons
-    if (!messages.value.some(m => m.id === savedMessage.id)) {
-    messages.value.push(savedMessage);
-    }
+    // Ne pas ajouter ici : l'ajout se fait via l'event WebSocket MessageSentEvent
     newMessage.value = '';
     if (props.onMessageSent) props.onMessageSent(conversationId, savedMessage);
   } catch (error) {
