@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { defineProps, ref, watch, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import EmojiPicker from 'vue3-emoji-picker';
 import 'vue3-emoji-picker/css';
 
@@ -86,6 +86,18 @@ const typingUserId = ref<number | null>(null);
 
 const typingUserName = ref(null);
 const showEmojiPicker = ref(false);
+const showSearch = ref(false);
+const searchQuery = ref('');
+
+const filteredMessages = computed(() => {
+  if (!searchQuery.value.trim()) return messages.value;
+  const q = searchQuery.value.trim().toLowerCase();
+  return messages.value.filter(m => {
+    const content = (m.content || '').toLowerCase();
+    const sender = (m.sender_name || '').toLowerCase();
+    return content.includes(q) || sender.includes(q);
+  });
+});
 
 function addEmoji(emoji: any) {
   newMessage.value += emoji.i; // emoji.i contient le caractère unicode
@@ -640,6 +652,16 @@ onMounted(() => {
   }
 });
 
+function openSearch() {
+  showSearch.value = true;
+  searchQuery.value = '';
+  // Focus sur l'input après affichage (géré dans le template)
+}
+function closeSearch() {
+  showSearch.value = false;
+  searchQuery.value = '';
+}
+
 </script>
 
 <template>
@@ -699,31 +721,53 @@ onMounted(() => {
           </div>
         </div>
         <div class="flex gap-3 text-gray-400">
-          <!-- Icônes -->
-          <button type="button" tabindex="-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="m16.556 12.906l-.455.453s-1.083 1.076-4.038-1.862s-1.872-4.014-1.872-4.014l.286-.286c.707-.702.774-1.83.157-2.654L9.374 2.86C8.61 1.84 7.135 1.705 6.26 2.575l-1.57 1.56c-.433.432-.723.99-.688 1.61c.09 1.587.808 5 4.812 8.982c4.247 4.222 8.232 4.39 9.861 4.238c.516-.048.964-.31 1.325-.67l1.42-1.412c.96-.953.69-2.588-.538-3.255l-1.91-1.039c-.806-.437-1.787-.309-2.417.317"
-              />
-            </svg>
-          </button>
-          <button type="button" tabindex="-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M5 5.5a2.75 2.75 0 0 0-2.75 2.75v7.5A2.75 2.75 0 0 0 5 18.5h8.5a2.75 2.75 0 0 0 2.75-2.75v-1.594l3.419 3.045c.805.717 2.081.145 2.081-.934V7.365c0-1.08-1.276-1.651-2.081-.934L16.25 9.476V8.25A2.75 2.75 0 0 0 13.5 5.5z"
-              />
-            </svg>
-          </button>
-          <button type="button" tabindex="-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M9 15.25a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.249 1.249 0 1 1 2.5 0a1.25 1.25 0 1 1-2.5 0"
-              />
-            </svg>
-          </button>
+          <!-- Barre de recherche ou icônes -->
+          <template v-if="showSearch">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Rechercher dans la conversation..."
+              class="px-3 py-1 rounded border focus:outline-none focus:ring w-48 text-sm"
+              ref="searchInput"
+              @keyup.esc="closeSearch"
+              autofocus
+            />
+            <button type="button" @click="closeSearch" class="ml-2 text-gray-400 hover:text-gray-600" title="Fermer la recherche">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path fill="currentColor" d="M10 8.586L15.95 2.636a1 1 0 1 1 1.414 1.414L11.414 10l5.95 5.95a1 1 0 1 1-1.414 1.414L10 11.414l-5.95 5.95a1 1 0 1 1-1.414-1.414L8.586 10l-5.95-5.95A1 1 0 1 1 4.05 2.636L10 8.586z"/></svg>
+            </button>
+          </template>
+          <template v-else>
+            <button type="button" tabindex="-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <path
+                  fill="currentColor"
+                  d="m16.556 12.906l-.455.453s-1.083 1.076-4.038-1.862s-1.872-4.014-1.872-4.014l.286-.286c.707-.702.774-1.83.157-2.654L9.374 2.86C8.61 1.84 7.135 1.705 6.26 2.575l-1.57 1.56c-.433.432-.723.99-.688 1.61c.09 1.587.808 5 4.812 8.982c4.247 4.222 8.232 4.39 9.861 4.238c.516-.048.964-.31 1.325-.67l1.42-1.412c.96-.953.69-2.588-.538-3.255l-1.91-1.039c-.806-.437-1.787-.309-2.417.317"
+                />
+              </svg>
+            </button>
+            <button type="button" tabindex="-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <path
+                  fill="currentColor"
+                  d="M5 5.5a2.75 2.75 0 0 0-2.75 2.75v7.5A2.75 2.75 0 0 0 5 18.5h8.5a2.75 2.75 0 0 0 2.75-2.75v-1.594l3.419 3.045c.805.717 2.081.145 2.081-.934V7.365c0-1.08-1.276-1.651-2.081-.934L16.25 9.476V8.25A2.75 2.75 0 0 0 13.5 5.5z"
+                />
+              </svg>
+            </button>
+            <button type="button" tabindex="-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <path
+                  fill="currentColor"
+                  d="M9 15.25a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.25 1.25 0 1 1 2.5 0a1.25 1.25 0 0 1-2.5 0m0-5a1.249 1.249 0 1 1 2.5 0a1.25 1.25 0 1 1-2.5 0"
+                />
+              </svg>
+            </button>
+            <!-- Nouvelle icône de recherche -->
+            <button type="button" tabindex="-1" @click="openSearch">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99c.41.41 1.09.41 1.5 0c.41-.41.41-1.09 0-1.5l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5s4.5 2.01 4.5 4.5S11.99 14 9.5 14z"/>
+              </svg>
+            </button>
+          </template>
         </div>
       </div>
 
@@ -736,7 +780,7 @@ onMounted(() => {
         <div v-if="loadingMessages" class="text-center text-sm text-gray-400">Chargement des messages...</div>
 
         <div
-          v-for="msg in messages"
+          v-for="msg in filteredMessages"
           :key="msg.id"
           class="flex items-end gap-2"
           :class="msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'"
