@@ -62,7 +62,7 @@ public function store(StoreMessageRequest $request)
             // 1. Valider les données reçues (content, conversation_id)
         $validated = $request->validated();
 
-            \Log::info('📤 MessageController: Début de l\'envoi de message', [
+            \Log::info(' MessageController: Début de l\'envoi de message', [
                 'conversation_id' => $validated['conversation_id'],
                 'content' => $validated['content'],
                 'sender_id' => auth()->id(),
@@ -76,7 +76,7 @@ public function store(StoreMessageRequest $request)
                 'sender_id' => auth()->id(),
             ]);
 
-            \Log::info('✅ MessageController: Message créé avec succès', [
+            \Log::info(' MessageController: Message créé avec succès', [
                 'message_id' => $message->id,
                 'conversation_id' => $message->conversation_id,
                 'sender_id' => $message->sender_id,
@@ -95,7 +95,7 @@ public function store(StoreMessageRequest $request)
             'errors' => $e->errors()
         ], 422);
         } catch (\Exception $e) {
-            \Log::error('❌ MessageController: Erreur lors de l\'envoi de message', [
+            \Log::error(' MessageController: Erreur lors de l\'envoi de message', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -196,7 +196,7 @@ public function store(StoreMessageRequest $request)
      */
     public function markConversationAsRead(Conversation $conversation)
     {
-        \Log::info('📖 MessageController: Marquage de tous les messages de la conversation comme lus', [
+        \Log::info(' MessageController: Marquage de tous les messages de la conversation comme lus', [
             'conversation_id' => $conversation->id,
             'user_id' => auth()->id()
         ]);
@@ -219,7 +219,7 @@ public function store(StoreMessageRequest $request)
                 'error' => 'Impossible de marquer les messages comme lus'
             ], 400);
         } catch (\Exception $e) {
-            \Log::error('📖 MessageController: Erreur lors du marquage de la conversation comme lue', [
+            \Log::error(' MessageController: Erreur lors du marquage de la conversation comme lue', [
                 'error' => $e->getMessage(),
                 'conversation_id' => $conversation->id,
                 'user_id' => auth()->id(),
@@ -238,9 +238,9 @@ public function store(StoreMessageRequest $request)
      */
     public function typingStatus(Request $request)
     {
-        
+
         try {
-            
+
         $request->validate([
             'conversation_id' => 'required|exists:conversations,id',
             'is_typing' => 'required|boolean',
@@ -249,7 +249,7 @@ public function store(StoreMessageRequest $request)
             $conversationId = $request->input('conversation_id');
             $isTyping = $request->input('is_typing');
             $userId = auth()->id();
-           
+
 
             $conversation = \App\Models\Conversation::findOrFail($conversationId);
             // Trouver l'autre participant
