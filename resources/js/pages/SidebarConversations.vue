@@ -179,7 +179,7 @@ async function fetchConversations() {
             name: conv.name,
             avatar: conv.avatar || '/default-avatar.png',
             message: conv.message,
-            time: conv.time,
+            time: conv.last_message?.created_at ? formatTime(conv.last_message.created_at) : '',
             unread_count: conv.unread_count || 0,
             last_message: conv.last_message,
         }));
@@ -246,11 +246,16 @@ function updateLastMessage(conversationId: number, message: any) {
             created_at: message.created_at,
             is_read: false,
         };
-        conversations.value[idx].time = new Date(message.created_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        conversations.value[idx].time = formatTime(message.created_at);
     }
+}
+
+// Fonction utilitaire pour formater l'heure au format HH:mm
+function formatTime(dateString: string) {
+    const date = new Date(dateString);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
 }
 
 onMounted(() => {
@@ -291,10 +296,7 @@ onMounted(() => {
                         };
 
                         // Mettre à jour l'heure du dernier message
-                        conversations.value[index].time = new Date(message.created_at).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
+                        conversations.value[index].time = formatTime(message.created_at);
 
                         // Mettre à jour le message legacy pour compatibilité
                         conversations.value[index].message = message.content;
@@ -356,7 +358,7 @@ function setupConversationListeners() {
                         name: newConversation.name,
                         avatar: newConversation.avatar,
                         message: newConversation.last_message?.content || '',
-                        time: newConversation.time,
+                        time: newConversation.last_message?.created_at ? formatTime(newConversation.last_message.created_at) : '',
                         unread_count: newConversation.unread_count || 0,
                         last_message: newConversation.last_message,
                     });
@@ -374,7 +376,7 @@ function setupConversationListeners() {
                         name: updatedConversation.name,
                         avatar: updatedConversation.avatar,
                         message: updatedConversation.last_message?.content || '',
-                        time: updatedConversation.time,
+                        time: updatedConversation.last_message?.created_at ? formatTime(updatedConversation.last_message.created_at) : '',
                         unread_count: updatedConversation.unread_count || 0,
                         last_message: updatedConversation.last_message,
                     };
@@ -394,7 +396,7 @@ function setupConversationListeners() {
                         name: updatedConversation.name,
                         avatar: updatedConversation.avatar,
                         message: updatedConversation.last_message?.content || '',
-                        time: updatedConversation.time,
+                        time: updatedConversation.last_message?.created_at ? formatTime(updatedConversation.last_message.created_at) : '',
                         unread_count: updatedConversation.unread_count || 0,
                         last_message: updatedConversation.last_message,
                     });
@@ -422,10 +424,7 @@ function setupConversationListeners() {
                         created_at: message.created_at,
                         is_read: false,
                     };
-                    conversations.value[index].time = new Date(message.created_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
+                    conversations.value[index].time = formatTime(message.created_at);
 
                     // Incrémenter le compteur de messages non lus si le message n'est pas de l'utilisateur actuel
                     if (message.sender_id !== props.currentUserId) {
